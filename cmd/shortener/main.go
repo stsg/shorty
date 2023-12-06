@@ -9,74 +9,73 @@ import (
 	// "net/url"
 )
 
-// type URLshortener struct {
-// 	url map[string]string
-// }
+var Shorty = make(map[string]string)
 
-//type Shorty map[string]string
-
-// var shorty Shorty
-var shorty = make(map[string]string)
-
-//var shorty = make(map[string]string)
+const ShortURLLength = 6
 
 func genShortURL() string {
 	charset := "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	length := 6
 
-	shortURL := make([]byte, length)
+	shortURL := make([]byte, ShortURLLength)
 	for i := range shortURL {
 		shortURL[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(shortURL)
 }
 
-func idHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.Method == http.MethodGet {
-			surl := strings.TrimPrefix(req.URL.Path, "/")
-			lurl, exist := shorty[surl]
-			if !exist {
-				rw.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			rw.Header().Set("Location", lurl)
-			rw.Header().Set("Content-Type", "text/plain")
-			rw.WriteHeader(http.StatusTemporaryRedirect)
-			return
-		}
-		next.ServeHTTP(rw, req)
-	})
-}
-
-func mainHandler(rw http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		rw.WriteHeader(http.StatusMethodNotAllowed)
+func getRealURL(rw http.ResponseWriter, req *http.Request) {
+	surl := strings.TrimPrefix(req.URL.Path, "/")
+	surl = strings.TrimSuffix(surl, "/")
+	if len(surl) >= ShortURLLength {
+		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	lurl, exist := Shorty[surl]
+	rw.Header().Set("Location", lurl)
+	rw.Header().Set("Content-Type", "text/plain")
+	if !exist {
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	rw.WriteHeader(http.StatusTemporaryRedirect)
+	rw.Write([]byte(lurl))
+}
+
+func getShortURL(rw http.ResponseWriter, req *http.Request) {
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
 		panic(err)
 	}
 	lurl := string(url)
-	for _, url := range shorty {
+	for _, url := range Shorty {
 		if url == lurl {
 			rw.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	}
 	surl := genShortURL()
-	shorty[surl] = lurl
+	Shorty[surl] = lurl
 	rw.WriteHeader(http.StatusCreated)
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.Write([]byte("http://localhost:8080/" + surl))
 }
 
+func mainHandler(rw http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case http.MethodPost:
+		getShortURL(rw, req)
+	case http.MethodGet:
+		getRealURL(rw, req)
+	default:
+		rw.WriteHeader(http.StatusBadRequest)
+	}
+}
+
 func main() {
-	// shorty["surl"] = "lurl"
-	// fmt.Println(shorty["surl"])
+	Shorty["123456"] = "https://www.google.com"
+
 	mux := http.NewServeMux()
-	mux.Handle(`/`, idHandler(http.HandlerFunc(mainHandler)))
+	mux.Handle(`/`, http.HandlerFunc(mainHandler))
 	err := http.ListenAndServe(`:8080`, mux)
 	if err != nil {
 		panic(err)
