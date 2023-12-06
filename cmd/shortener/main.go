@@ -26,7 +26,7 @@ func genShortURL() string {
 func getRealURL(rw http.ResponseWriter, req *http.Request) {
 	surl := strings.TrimPrefix(req.URL.Path, "/")
 	surl = strings.TrimSuffix(surl, "/")
-	if len(surl) >= ShortURLLength {
+	if len(surl) > ShortURLLength {
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
