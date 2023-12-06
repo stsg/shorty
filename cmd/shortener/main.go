@@ -27,6 +27,7 @@ func getRealURL(rw http.ResponseWriter, req *http.Request) {
 	surl := strings.TrimPrefix(req.URL.Path, "/")
 	surl = strings.TrimSuffix(surl, "/")
 	if len(surl) > ShortURLLength {
+		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -34,6 +35,7 @@ func getRealURL(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Location", lurl)
 	rw.Header().Set("Content-Type", "text/plain")
 	if !exist {
+		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
