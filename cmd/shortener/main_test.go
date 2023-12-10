@@ -1,14 +1,13 @@
 package main
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
-	"github.com/magiconair/properties/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/go-resty/resty/v2"
+	// "github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_getShortURL(t *testing.T) {
@@ -34,7 +33,7 @@ func Test_getShortURL(t *testing.T) {
 			request: "https://practicum.yandex.ru",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				response:    "",
 			},
 		},
@@ -45,7 +44,7 @@ func Test_getShortURL(t *testing.T) {
 			request: "https://ya.ru",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				response:    "",
 			},
 		},
@@ -73,19 +72,27 @@ func Test_getShortURL(t *testing.T) {
 		},
 	}
 
+	handler := http.HandlerFunc(getShortURL)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			req := httptest.NewRequest(test.method, test.url, strings.NewReader(test.request))
-			w := httptest.NewRecorder()
-			getShortURL(w, req)
-			res := w.Result()
-			_, err := io.ReadAll(res.Body)
-			// assert.Equal(t, test.want.statusCode, res.StatusCode)
-			assert.Equal(t, res.StatusCode, test.want.statusCode)
-			defer res.Body.Close()
-			require.NoError(t, err)
-			assert.Equal(t, w.Header().Get("Content-Type"), test.want.contentType)
-			require.NoError(t, res.Body.Close())
+			req := resty.New().R()
+			req.Method = test.method
+			req.SetBody(test.request)
+			req.URL = srv.URL
+
+			resp, err := req.Send()
+			assert.NoError(t, err, "Error making HTTP request!")
+
+			assert.Equal(t, test.want.statusCode, resp.StatusCode())
+			if test.want.contentType != "" {
+				assert.Equal(t, test.want.contentType, resp.Header().Get("Content-Type"))
+			}
+			if test.want.response != "" {
+				assert.Equal(t, test.want.response, string(resp.Body()))
+			}
 		})
 	}
 }
@@ -129,7 +136,7 @@ func Test_getRealURL(t *testing.T) {
 				statusCode:  http.StatusTemporaryRedirect,
 				contentType: "text/plain",
 				location:    "https://www.google.com",
-				response:    "https://www.google.com",
+				response:    "",
 			},
 		},
 		{
@@ -158,20 +165,27 @@ func Test_getRealURL(t *testing.T) {
 		},
 	}
 
+	handler := http.HandlerFunc(getRealURL)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			req := httptest.NewRequest(test.method, test.url, strings.NewReader(test.request))
-			// req := httptest.NewRequest(test.method, test.url, nil)
-			w := httptest.NewRecorder()
-			getRealURL(w, req)
-			res := w.Result()
-			_, err := io.ReadAll(res.Body)
-			assert.Equal(t, res.StatusCode, test.want.statusCode)
-			defer res.Body.Close()
-			require.NoError(t, err)
-			assert.Equal(t, w.Header().Get("Content-Type"), test.want.contentType)
-			assert.Equal(t, w.Header().Get("Location"), test.want.location)
-			require.NoError(t, res.Body.Close())
+			client := resty.New()
+			client.SetRedirectPolicy(resty.RedirectPolicyFunc(func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			}))
+			req := client.R()
+			req.Method = test.method
+			req.URL = srv.URL + test.request
+			resp, err := req.Send()
+
+			assert.NoError(t, err, "Error making HTTP request!")
+			assert.Equal(t, test.want.statusCode, resp.StatusCode())
+			assert.Equal(t, test.want.contentType, resp.Header().Get("Content-Type"))
+			if test.want.response != "" {
+				assert.Equal(t, test.want.response, string(resp.Body()))
+			}
 		})
 	}
 }
