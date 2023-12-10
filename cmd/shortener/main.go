@@ -1,13 +1,15 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/stsg/shorty/cmd/shortener/config"
 )
 
 var Shorty = make(map[string]string)
@@ -66,12 +68,16 @@ func getShortURL(rw http.ResponseWriter, req *http.Request) {
 func main() {
 	Shorty["123456"] = "https://www.google.com"
 
+	config.ParseFlags()
+
 	r := chi.NewRouter()
 
 	r.Post("/", getShortURL)
 	r.Get("/{id}", getRealURL)
 
-	err := http.ListenAndServe(":8080", r)
+	fmt.Println("Short URLs server address", config.ShortyCnf.Host)
+	fmt.Println("Running server on", config.ShortyCnf.RunAddr)
+	err := http.ListenAndServe(config.ShortyCnf.RunAddr, r)
 	if err != nil {
 		panic(err)
 	}
