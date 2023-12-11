@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -62,23 +61,23 @@ func getShortURL(rw http.ResponseWriter, req *http.Request) {
 	Shorty[surl] = lurl
 	rw.WriteHeader(http.StatusCreated)
 	rw.Header().Set("Content-Type", "text/plain")
-	// rw.Write([]byte("http://localhost:8080/" + surl))
-	rw.Write([]byte(config.ShortyCnf.Host + surl))
+	rw.Write([]byte("http://" + config.RunAddress + "/" + surl))
 }
 
 func main() {
 	Shorty["123456"] = "https://www.google.com"
 
-	config.ParseFlags()
+	err := config.InitConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	r := chi.NewRouter()
 
 	r.Post("/", getShortURL)
 	r.Get("/{id}", getRealURL)
 
-	fmt.Println("Short URLs server address", config.ShortyCnf.Host)
-	fmt.Println("Running server on", config.ShortyCnf.RunAddr)
-	err := http.ListenAndServe(config.ShortyCnf.RunAddr, r)
+	err = http.ListenAndServe(config.RunAddress, r)
 	if err != nil {
 		panic(err)
 	}
