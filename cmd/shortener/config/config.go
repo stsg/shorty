@@ -22,7 +22,7 @@ var RunAddress string
 var Host string
 
 func ParseFlags() error {
-	flag.StringVar(&ShortyCnf.RunAddr, "a", "http://localhost:8080", "address and port to run server")
+	flag.StringVar(&ShortyCnf.RunAddr, "a", ":8080", "address and port to run server")
 	flag.StringVar(&ShortyCnf.Host, "b", "http://localhost", "shortener address")
 
 	flag.Parse()
