@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -13,6 +12,9 @@ import (
 )
 
 var Shorty = make(map[string]string)
+
+var ServerAddress string
+var BaseAddress string
 
 const ShortURLLength = 6
 
@@ -70,17 +72,17 @@ func getShortURL(rw http.ResponseWriter, req *http.Request) {
 func main() {
 	Shorty["123456"] = "https://www.google.com"
 
-	config.ParseFlags()
-	config.ParseEnv()
+	err := config.InitConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	r := chi.NewRouter()
 
 	r.Post("/", getShortURL)
 	r.Get("/{id}", getRealURL)
 
-	fmt.Println("Short URLs server address", config.ShortyCnf.Host)
-	fmt.Println("Running server on", config.ShortyCnf.RunAddr)
-	err := http.ListenAndServe(config.ShortyCnf.RunAddr, r)
+	err = http.ListenAndServe(config.ShortyCnf.RunAddr, r)
 	if err != nil {
 		panic(err)
 	}
