@@ -70,6 +70,7 @@ func main() {
 	Shorty["123456"] = "https://www.google.com"
 
 	config.ParseFlags()
+	config.ParseEnv()
 
 	r := chi.NewRouter()
 
