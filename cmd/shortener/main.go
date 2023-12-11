@@ -64,12 +64,6 @@ func getShortURL(rw http.ResponseWriter, req *http.Request) {
 	Shorty[surl] = lurl
 	rw.WriteHeader(http.StatusCreated)
 	rw.Header().Set("Content-Type", "text/plain")
-	// rw.Write([]byte("http://localhost:8080/" + surl))
-	// if !strings.Contains(config.ShortyCnf.Host, "localhost") {
-	// 	rw.Write([]byte(config.ShortyCnf.Host + config.ShortyCnf.RunAddr + "/" + surl))
-	// } else {
-	// 	rw.Write([]byte(config.ShortyCnf.RunAddr + "/" + surl))
-	// }
 	rw.Write([]byte("http://" + config.RunAddress + "/" + surl))
 }
 

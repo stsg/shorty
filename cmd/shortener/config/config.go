@@ -57,17 +57,6 @@ func InitConfig() error {
 		return err
 	}
 
-	fmt.Println("Scheme:", runAddressURL.Scheme)
-	fmt.Println("Opaque:", runAddressURL.Opaque)
-	fmt.Println("User:", runAddressURL.User)
-	fmt.Println("Host:", runAddressURL.Host)
-	fmt.Println("Path:", runAddressURL.Path)
-	fmt.Println("RawPath:", runAddressURL.RawPath)
-	fmt.Println("ForceQuery:", runAddressURL.ForceQuery)
-	fmt.Println("RawQuery:", runAddressURL.RawQuery)
-	fmt.Println("Fragment:", runAddressURL.Fragment)
-	fmt.Println("RawFragment:", runAddressURL.RawFragment)
-
 	RunAddress = ""
 	host, port, _ := net.SplitHostPort(runAddressURL.Host)
 	if host == "" {
@@ -80,41 +69,6 @@ func InitConfig() error {
 	} else {
 		RunAddress += ":" + port
 	}
-	// RunAddress += runAddressURL.Scheme
-	// if runAddressURL.Scheme == "" {
-	// 	RunAddress += "http"
-	// }
-	// RunAddress += "://"
-	// hostR, portR, _ := net.SplitHostPort(runAddressURL.Host)
-	// fmt.Println("hostR", hostR)
-	// RunAddress += hostR
-	// if hostR == "" {
-	// 	RunAddress = RunAddress + "localhost"
-	// }
-	// if portR == "" {
-	// 	RunAddress = RunAddress + ":8080"
-	// } else {
-	// 	RunAddress = RunAddress + ":" + portR
-	// }
-	// fmt.Println("RunAddr", RunAddress)
-
-	// hostURL, err := url.Parse(ShortyCnf.Host)
-	// if err != nil {
-	// 	return err
-	// }
-	// Host = ""
-	// if hostURL.Scheme == "" {
-	// 	Host += "http://"
-	// }
-	// hostB, portB, _ := net.SplitHostPort(hostURL.Host)
-	// if hostB == "" {
-	// 	RunAddress += "localhost"
-	// }
-	// if portB == "" {
-	// 	RunAddress += ":8080"
-	// }
-
-	fmt.Println("RunAddress", RunAddress)
 
 	hostURL, err := url.Parse(ShortyCnf.Host)
 	if err != nil {
@@ -135,7 +89,6 @@ func InitConfig() error {
 	} else {
 		Host += ":" + port
 	}
-	fmt.Println("Host", Host)
 
 	return nil
 }
