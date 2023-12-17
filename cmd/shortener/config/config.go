@@ -15,11 +15,20 @@ type Cnf struct {
 	RunAddr string `env:"SERVER_ADDRESS"`
 	// Short URL server address
 	Host string `env:"BASE_URL"`
+	// TODO
+	// @rktkov Зачем RunAddress и Host переменные делать открытыми,
+	// они ведь только в этом пакете используется. Я бы и конфиг
+	// тоже не делал бы открытой. Очень велика опасность,
+	// что кто-то к ней обратится до непосредственной инициализации.
 }
 
 var ShortyCnf Cnf
 var RunAddress string
 var Host string
+
+// TODO
+// @rktkov Тоже самое про методы, их не стоит открывать,
+// лучше сделать закрытыми.
 
 func ParseFlags() error {
 	flag.StringVar(&ShortyCnf.RunAddr, "a", "http://localhost:8080", "address and port to run server")

@@ -1,5 +1,12 @@
 package main
 
+// TODO
+// @rktkov Основное замечание ментора:
+// Сейчас принимаю плоскую структуру,
+// но в следующей раз без разбиения
+// на логические уровни их связывания
+// через интерфейсы код не приму.
+
 import (
 	"io"
 	"math/rand"
@@ -42,6 +49,8 @@ func getRealURL(rw http.ResponseWriter, req *http.Request) {
 	if !exist {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusBadRequest)
+		// TODO
+		// @rktkov Я бы тут 404 возвращал, раз ссылки нет.
 		return
 	}
 	rw.WriteHeader(http.StatusTemporaryRedirect)
