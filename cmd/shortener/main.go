@@ -13,6 +13,9 @@ import (
 
 var Shorty = make(map[string]string)
 
+var ServerAddress string
+var BaseAddress string
+
 const ShortURLLength = 6
 
 func genShortURL() string {
