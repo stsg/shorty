@@ -6,7 +6,8 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
-	// "net/url"
+
+	"github.com/go-chi/chi/v5"
 )
 
 var Shorty = make(map[string]string)
@@ -62,23 +63,15 @@ func getShortURL(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte("http://localhost:8080/" + surl))
 }
 
-func mainHandler(rw http.ResponseWriter, req *http.Request) {
-	switch req.Method {
-	case http.MethodPost:
-		getShortURL(rw, req)
-	case http.MethodGet:
-		getRealURL(rw, req)
-	default:
-		rw.WriteHeader(http.StatusBadRequest)
-	}
-}
-
 func main() {
 	Shorty["123456"] = "https://www.google.com"
 
-	mux := http.NewServeMux()
-	mux.Handle(`/`, http.HandlerFunc(mainHandler))
-	err := http.ListenAndServe(`:8080`, mux)
+	r := chi.NewRouter()
+
+	r.Post("/", getShortURL)
+	r.Get("/{id}", getRealURL)
+
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		panic(err)
 	}
