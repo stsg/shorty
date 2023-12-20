@@ -34,12 +34,12 @@ type Config struct {
 	baseAddr *url.URL   `env:"BASE_URL"`
 }
 
-func (c Config) GetRunAddr() string {
-	return c.runAddr.host + ":" + strconv.Itoa(c.runAddr.port)
+func (conf Config) GetRunAddr() string {
+	return conf.runAddr.host + ":" + strconv.Itoa(conf.runAddr.port)
 }
 
-func (c Config) GetBaseAddr() string {
-	return c.baseAddr.String()
+func (conf Config) GetBaseAddr() string {
+	return conf.baseAddr.String()
 }
 
 func NewConfig() *Config {
