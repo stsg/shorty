@@ -6,14 +6,15 @@ import (
 	"testing"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/stsg/shorty/internal/config"
+	"github.com/stsg/shorty/internal/handle"
+	"github.com/stsg/shorty/internal/storage"
+
 	// "github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_getShortURL(t *testing.T) {
-
-	Shorty["123456"] = "https://www.google.com"
-
 	type want struct {
 		statusCode  int
 		contentType string
@@ -72,7 +73,11 @@ func Test_getShortURL(t *testing.T) {
 		},
 	}
 
-	handler := http.HandlerFunc(getShortURL)
+	conf := config.NewConfig()
+	strg := storage.NewMapStorage()
+	hndl := handle.NewHandle(conf, *strg)
+
+	handler := http.HandlerFunc(hndl.HandleShortRequest)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
@@ -98,9 +103,6 @@ func Test_getShortURL(t *testing.T) {
 }
 
 func Test_getRealURL(t *testing.T) {
-
-	Shorty["123456"] = "https://www.google.com"
-
 	type want struct {
 		statusCode  int
 		contentType string
@@ -165,7 +167,11 @@ func Test_getRealURL(t *testing.T) {
 		},
 	}
 
-	handler := http.HandlerFunc(getRealURL)
+	conf := config.NewConfig()
+	strg := storage.NewMapStorage()
+	hndl := handle.NewHandle(conf, *strg)
+
+	handler := http.HandlerFunc(hndl.HandleShortId)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
