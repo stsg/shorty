@@ -171,7 +171,7 @@ func Test_getRealURL(t *testing.T) {
 	strg := storage.NewMapStorage()
 	hndl := handle.NewHandle(conf, *strg)
 
-	handler := http.HandlerFunc(hndl.HandleShortId)
+	handler := http.HandlerFunc(hndl.HandleShortID)
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
 

@@ -27,7 +27,7 @@ func main() {
 	r := chi.NewRouter()
 
 	r.Post("/", hndl.HandleShortRequest)
-	r.Get("/{id}", hndl.HandleShortId)
+	r.Get("/{id}", hndl.HandleShortID)
 
 	err := http.ListenAndServe(conf.GetRunAddr(), r)
 	if err != nil {

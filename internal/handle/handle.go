@@ -23,7 +23,7 @@ func NewHandle(config *config.Config, storage storage.MapStorage) Handle {
 	return hndl
 }
 
-func (h *Handle) HandleShortId(rw http.ResponseWriter, req *http.Request) {
+func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")
 	lurl, err := h.storage.GetRealURL(id)
