@@ -48,7 +48,7 @@ func ZapLogger(logger *zap.Logger) func(http.Handler) http.Handler {
 
 			dur := time.Since(then)
 			status := ww.Status()
-			var responseFields []zapcore.Field = []zapcore.Field{
+			var responseFields = []zapcore.Field{
 				zap.Int("Status", status),
 				zap.Int("Bytes", ww.BytesWritten()),
 				zap.Duration("Duration", dur),
