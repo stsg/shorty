@@ -14,6 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var conf config.Config
+
+// = config.NewConfig()
+
 func Test_getShortURL(t *testing.T) {
 	type want struct {
 		statusCode  int
@@ -73,7 +77,7 @@ func Test_getShortURL(t *testing.T) {
 		},
 	}
 
-	conf := config.NewConfig()
+	conf = config.NewConfig()
 	strg := storage.NewMapStorage()
 
 	// for testing
@@ -127,7 +131,7 @@ func Test_getRealURL(t *testing.T) {
 			url:     "/654321",
 			request: "/654321",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusNotFound,
 				contentType: "text/plain",
 				location:    "",
 				response:    "",
@@ -140,7 +144,7 @@ func Test_getRealURL(t *testing.T) {
 			request: "/123456",
 			want: want{
 				statusCode:  http.StatusTemporaryRedirect,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				location:    "https://www.google.com",
 				response:    "",
 			},
@@ -151,7 +155,7 @@ func Test_getRealURL(t *testing.T) {
 			url:     "/djsakhjkashhsjkhsadjkhsajkhdjkashdjkashdjkhaskjdhaskjhdjkashdkjashdjkashdkjhsakdhjkashdjkashdkjashdjkhasjkdhasjkhdkjashdjkashdjkhasdjkhdasjk/",
 			request: "/djsakhjkashhsjkhsadjkhsajkhdjkashdjkashdjkhaskjdhaskjhdjkashdkjashdjkashdkjhsakdhjkashdjkashdkjashdjkhasjkdhasjkhdkjashdjkashdjkhasdjkhdasjk/",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusNotFound,
 				contentType: "text/plain",
 				location:    "",
 				response:    "",
@@ -163,7 +167,7 @@ func Test_getRealURL(t *testing.T) {
 			url:     "/djsakhjk/ashhsjkhsadjkhsajkhdjka/ashdjkashdjkha/678",
 			request: "/djsakhjk/ashhsjkhsadjkhsajkhdjka/ashdjkashdjkha/678",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusNotFound,
 				contentType: "text/plain",
 				location:    "",
 				response:    "",
@@ -171,8 +175,12 @@ func Test_getRealURL(t *testing.T) {
 		},
 	}
 
-	conf := config.NewConfig()
+	//conf = config.NewConfig()
 	strg := storage.NewMapStorage()
+
+	// for testing
+	strg.SetShorURL("123456", "https://www.google.com")
+
 	hndl := handle.NewHandle(conf, *strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortID)
