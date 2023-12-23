@@ -33,6 +33,7 @@ func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte(err.Error()))
 
 	}
+	rw.Header().Set("Localtion", lurl)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
 	rw.Write([]byte(lurl))
 }
