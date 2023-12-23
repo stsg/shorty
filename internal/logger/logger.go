@@ -66,7 +66,7 @@ func ZapLogger(logger *zap.Logger) func(http.Handler) http.Handler {
 				zap.Int("Bytes", ww.BytesWritten()),
 				zap.Duration("Duration", dur),
 			}
-			if status < 200 || (status > 399 && status < 400) || status > 499 {
+			if status < http.StatusOK || status >= http.StatusInternalServerError {
 				logger.Error(
 					"http response",
 					responseFields...)

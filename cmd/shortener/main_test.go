@@ -16,8 +16,6 @@ import (
 
 var conf config.Config
 
-// = config.NewConfig()
-
 func Test_getShortURL(t *testing.T) {
 	type want struct {
 		statusCode  int
