@@ -18,6 +18,7 @@ func ZapLogger(logger *zap.Logger) func(http.Handler) http.Handler {
 
 			var fields []zapcore.Field
 			var headers []string
+
 			for k := range r.Header {
 				headers = append(headers, k)
 			}
@@ -45,6 +46,18 @@ func ZapLogger(logger *zap.Logger) func(http.Handler) http.Handler {
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 			next.ServeHTTP(ww, r)
+
+			var respheaders []string
+			var rfields []zapcore.Field
+
+			for k := range ww.Header() {
+				respheaders = append(respheaders, k)
+			}
+
+			for _, h := range respheaders {
+				rfields = append(rfields, zap.String(h, ww.Header().Get(h)))
+			}
+			logger.Info("respheader", rfields...)
 
 			dur := time.Since(then)
 			status := ww.Status()

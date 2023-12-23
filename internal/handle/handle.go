@@ -31,9 +31,10 @@ func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusNotFound)
 		rw.Write([]byte(err.Error()))
+		return
 
 	}
-	rw.Header().Set("Localtion", lurl)
+	rw.Header().Set("Location", lurl)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
 	rw.Write([]byte(lurl))
 }
@@ -49,6 +50,7 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusBadRequest)
 		rw.Write([]byte(err.Error()))
+		return
 
 	}
 	rw.Header().Set("Content-Type", "text/plain")
