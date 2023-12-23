@@ -29,8 +29,8 @@ type NetAddress struct {
 }
 
 type Config struct {
-	runAddr  NetAddress `env:"SERVER_ADDRESS"`
-	baseAddr *url.URL   `env:"BASE_URL"`
+	runAddr  NetAddress // `env:"SERVER_ADDRESS"`
+	baseAddr *url.URL   // `env:"BASE_URL"`
 }
 
 func (conf Config) GetRunAddr() string {
@@ -41,10 +41,12 @@ func (conf Config) GetBaseAddr() string {
 	return conf.baseAddr.String()
 }
 
-func NewConfig() *Config {
-	res := &Config{}
+func NewConfig() Config {
+	res := Config{}
 
 	res.ParseEnv()
+	flag.StringVar(&options.runAddrOpt, "a", defaultRunAddr, "address and port to run server")
+	flag.StringVar(&options.baseAddrOpt, "b", defaultBaseAddr, "shortener address")
 	res.ParseFlags()
 
 	hp := strings.Split(options.runAddrOpt, ":")
@@ -75,8 +77,8 @@ func NewConfig() *Config {
 }
 
 func (conf *Config) ParseFlags() error {
-	flag.StringVar(&options.runAddrOpt, "a", defaultRunAddr, "address and port to run server")
-	flag.StringVar(&options.baseAddrOpt, "b", defaultBaseAddr, "shortener address")
+	// flag.StringVar(&options.runAddrOpt, "a", defaultRunAddr, "address and port to run server")
+	// flag.StringVar(&options.baseAddrOpt, "b", defaultBaseAddr, "shortener address")
 	flag.Parse()
 	return nil
 }

@@ -11,11 +11,11 @@ import (
 )
 
 type Handle struct {
-	config  *config.Config
+	config  config.Config
 	storage storage.MapStorage
 }
 
-func NewHandle(config *config.Config, storage storage.MapStorage) Handle {
+func NewHandle(config config.Config, storage storage.MapStorage) Handle {
 	hndl := Handle{}
 	hndl.config = config
 	hndl.storage = storage
