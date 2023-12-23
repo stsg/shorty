@@ -52,5 +52,5 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	}
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
-	rw.Write([]byte("http://" + h.config.GetBaseAddr() + "/" + surl))
+	rw.Write([]byte(h.config.GetBaseAddr() + "/" + surl))
 }

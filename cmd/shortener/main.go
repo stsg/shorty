@@ -25,6 +25,10 @@ func main() {
 
 	conf := config.NewConfig()
 	strg := storage.NewMapStorage()
+
+	// for testing
+	strg.SetShorURL("123456", "https://www.gogoglre.com")
+
 	hndl := handle.NewHandle(conf, *strg)
 
 	logger, err := zap.NewDevelopment()

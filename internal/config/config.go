@@ -6,7 +6,6 @@ package config
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -15,7 +14,7 @@ import (
 )
 
 const defaultRunAddr string = "localhost:8080"
-const defaultBaseAddr string = "http://localhost"
+const defaultBaseAddr string = "http://localhost:8080"
 
 type Options struct {
 	runAddrOpt  string `env:"SERVER_ADDRESS"`
@@ -59,8 +58,7 @@ func NewConfig() *Config {
 	res.runAddr.host = hp[0]
 	res.runAddr.port = port
 
-	fmt.Println("0 RunAddr: " + res.GetRunAddr())
-
+	options.baseAddrOpt = strings.TrimSuffix(options.baseAddrOpt, "/")
 	res.baseAddr, err = url.Parse(options.baseAddrOpt)
 	if err != nil {
 		panic(errors.New("cannot parse base address"))
@@ -73,7 +71,6 @@ func NewConfig() *Config {
 		}
 	}
 
-	fmt.Println("0 BaseAddr: " + res.GetBaseAddr())
 	return res
 }
 

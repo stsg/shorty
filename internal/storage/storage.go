@@ -11,6 +11,15 @@ type MapStorage struct {
 	m map[string]string
 }
 
+func (s MapStorage) SetShorURL(shortURL string, longURL string) error {
+	_, exist := s.m[shortURL]
+	if exist {
+		return errors.New("short URL already exist")
+	}
+	s.m[shortURL] = longURL
+	return nil
+}
+
 func NewMapStorage() *MapStorage {
 	return &MapStorage{m: make(map[string]string)}
 }
@@ -29,13 +38,15 @@ func (s *MapStorage) GetRealURL(shortURL string) (string, error) {
 func (s *MapStorage) GetShortURL(longURL string) (string, error) {
 	for surl, lurl := range s.m {
 		if lurl == longURL {
-			return surl, errors.New("short URL already exist")
+			return surl, errors.New("short URL already exist: ")
 		}
 	}
 	for {
 		surl := genShortURL()
 		_, exist := s.m[surl]
 		if !exist {
+			s.SetShorURL(surl, longURL)
+			// s.m[surl] = longURL
 			return surl, nil
 		}
 	}
