@@ -34,7 +34,7 @@ func Test_getShortURL(t *testing.T) {
 			request: "https://practicum.yandex.ru",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				response:    "",
 			},
 		},
@@ -45,7 +45,7 @@ func Test_getShortURL(t *testing.T) {
 			request: "https://ya.ru",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				response:    "",
 			},
 		},
@@ -75,6 +75,10 @@ func Test_getShortURL(t *testing.T) {
 
 	conf := config.NewConfig()
 	strg := storage.NewMapStorage()
+
+	// for testing
+	strg.SetShorURL("123456", "https://www.google.com")
+
 	hndl := handle.NewHandle(conf, *strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortRequest)

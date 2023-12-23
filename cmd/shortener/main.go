@@ -27,7 +27,7 @@ func main() {
 	strg := storage.NewMapStorage()
 
 	// for testing
-	strg.SetShorURL("123456", "https://www.gogoglre.com")
+	strg.SetShorURL("123456", "https://www.google.com")
 
 	hndl := handle.NewHandle(conf, *strg)
 
