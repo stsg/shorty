@@ -1,7 +1,9 @@
 package handle
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -13,6 +15,14 @@ import (
 type Handle struct {
 	config  config.Config
 	storage storage.MapStorage
+}
+
+type reqJSON struct {
+	URL string `json:"url,omitempty"`
+}
+
+type resJSON struct {
+	Result string `json:"result"`
 }
 
 func NewHandle(config config.Config, storage storage.MapStorage) Handle {
@@ -56,4 +66,37 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
 	rw.Write([]byte(h.config.GetBaseAddr() + "/" + surl))
+}
+
+func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
+	var rqJSON reqJSON
+	var rwJSON resJSON
+
+	url, err := io.ReadAll(req.Body)
+	if err != nil {
+		fmt.Println("cannot read body requets")
+		return
+	}
+	err = json.Unmarshal(url, &rqJSON)
+	if err != nil {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		body, _ := json.Marshal(map[string]string{"error": err.Error()})
+		rw.Write([]byte(body))
+		return
+	}
+	//lurl := reqJSON.URL
+	rwJSON.Result, err = h.storage.GetShortURL(rqJSON.URL)
+	if err != nil {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		body, _ := json.Marshal(map[string]string{"error": err.Error()})
+		rw.Write([]byte(body))
+		return
+	}
+	rw.Header().Set("Location", rwJSON.Result)
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	body, _ := json.Marshal(rwJSON)
+	rw.Write([]byte(body))
 }
