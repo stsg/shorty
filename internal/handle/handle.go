@@ -1,6 +1,7 @@
 package handle
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -61,7 +62,6 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusBadRequest)
 		rw.Write([]byte(err.Error()))
 		return
-
 	}
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
@@ -100,4 +100,33 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 	rw.WriteHeader(http.StatusCreated)
 	body, _ := json.Marshal(rwJSON)
 	rw.Write([]byte(body))
+}
+
+func (h *Handle) Decompress() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			if req.Header.Get("Content-Encoding") == "gzip" {
+				reader, err := gzip.NewReader(req.Body)
+				if err != nil {
+					rw.Header().Set("Content-Type", "text/plain")
+					rw.WriteHeader(http.StatusBadRequest)
+					rw.Write([]byte(err.Error()))
+					return
+				}
+				defer reader.Close()
+
+				buf := new(strings.Builder)
+				_, err = io.Copy(buf, reader)
+				if err != nil {
+					rw.Header().Set("Content-Type", "text/plain")
+					rw.WriteHeader(http.StatusBadRequest)
+					rw.Write([]byte(err.Error()))
+					return
+				}
+				req.Body = io.NopCloser(strings.NewReader(buf.String()))
+				req.Header.Set("Content-Length", string(rune(len(buf.String()))))
+			}
+			next.ServeHTTP(rw, req)
+		})
+	}
 }

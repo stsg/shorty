@@ -35,6 +35,7 @@ func main() {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(mylogger.ZapLogger(logger))
+	r.Use(hndl.Decompress())
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 
 	r.Post("/", hndl.HandleShortRequest)
