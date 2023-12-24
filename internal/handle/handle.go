@@ -87,6 +87,7 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 	}
 	//lurl := reqJSON.URL
 	rwJSON.Result, err = h.storage.GetShortURL(rqJSON.URL)
+	rwJSON.Result = h.config.GetBaseAddr() + "/" + rwJSON.Result
 	if err != nil {
 		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusBadRequest)
