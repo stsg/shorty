@@ -17,14 +17,12 @@ import (
 )
 
 func main() {
-
 	conf := config.NewConfig()
 	strg := storage.NewMapStorage()
+	hndl := handle.NewHandle(conf, *strg)
 
 	// for testing
 	strg.SetShorURL("123456", "https://www.google.com")
-
-	hndl := handle.NewHandle(conf, *strg)
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -41,6 +39,9 @@ func main() {
 
 	r.Post("/", hndl.HandleShortRequest)
 	r.Get("/{id}", hndl.HandleShortID)
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", hndl.HandleShortRequestJSON)
+	})
 
 	err = http.ListenAndServe(conf.GetRunAddr(), r)
 	if err != nil {
