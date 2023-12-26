@@ -77,12 +77,13 @@ func Test_getShortURL(t *testing.T) {
 	}
 
 	conf = config.NewConfig()
-	strg := storage.NewMapStorage()
+	strg, err := storage.New(conf)
+	assert.NoError(t, err, "Error creating storage")
 
 	// for testing
-	strg.SetShorURL("123456", "https://www.google.com")
+	strg.Save("123456", "https://www.google.com")
 
-	hndl := handle.NewHandle(conf, *strg)
+	hndl := handle.NewHandle(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortRequest)
 	srv := httptest.NewServer(handler)
@@ -175,12 +176,13 @@ func Test_getRealURL(t *testing.T) {
 	}
 
 	//conf = config.NewConfig()
-	strg := storage.NewMapStorage()
+	strg, err := storage.New(conf)
+	assert.NoError(t, err, "Error creating storage")
 
 	// for testing
-	strg.SetShorURL("123456", "https://www.google.com")
+	strg.Save("123456", "https://www.google.com")
 
-	hndl := handle.NewHandle(conf, *strg)
+	hndl := handle.NewHandle(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortID)
 	srv := httptest.NewServer(handler)
@@ -292,12 +294,13 @@ func Test_getShortURLJSON(t *testing.T) {
 	}
 
 	// conf = config.NewConfig()
-	strg := storage.NewMapStorage()
+	strg, err := storage.New(conf)
+	assert.NoError(t, err, "Error creating storage")
 
 	// for testing
-	strg.SetShorURL("123456", "https://www.google.com")
+	strg.Save("123456", "https://www.google.com")
 
-	hndl := handle.NewHandle(conf, *strg)
+	hndl := handle.NewHandle(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortRequestJSON)
 	srv := httptest.NewServer(handler)

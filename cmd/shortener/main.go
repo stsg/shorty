@@ -18,11 +18,17 @@ import (
 
 func main() {
 	conf := config.NewConfig()
-	strg := storage.NewMapStorage()
-	hndl := handle.NewHandle(conf, *strg)
+	strg, err := storage.New(conf)
+	if err != nil {
+		panic(err)
+		// errors.New("cannot create storage"))
+	}
+	hndl := handle.NewHandle(conf, strg)
 
 	// for testing
-	strg.SetShorURL("123456", "https://www.google.com")
+	if !strg.IsRealURLExist("https://www.google.com") {
+		strg.Save("123456", "https://www.google.com")
+	}
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {
