@@ -15,10 +15,12 @@ import (
 
 const defaultRunAddr string = "localhost:8080"
 const defaultBaseAddr string = "http://localhost:8080"
+const defaultFileStor string = "/tmp/short-url-db.json"
 
 type Options struct {
 	runAddrOpt  string `env:"SERVER_ADDRESS"`
 	baseAddrOpt string `env:"BASE_URL"`
+	fileStorOpt string `env:"FILE_STORAGE_PATH"`
 }
 
 var options Options
@@ -31,6 +33,7 @@ type NetAddress struct {
 type Config struct {
 	runAddr  NetAddress // `env:"SERVER_ADDRESS"`
 	baseAddr *url.URL   // `env:"BASE_URL"`
+	fileStor string     // `env:"FILE_STORAGE_PATH"`
 }
 
 func (conf Config) GetRunAddr() string {
@@ -41,12 +44,24 @@ func (conf Config) GetBaseAddr() string {
 	return conf.baseAddr.String()
 }
 
+func (conf Config) GetFileStor() string {
+	return conf.fileStor
+}
+
 func NewConfig() Config {
 	res := Config{}
 
 	res.ParseEnv()
+	// err := env.Parse(&res)
+	// if err != nil {
+	// 	// OS environment parsing error
+	// 	panic(errors.New("cannot parse OS environment"))
+	// }
+
 	flag.StringVar(&options.runAddrOpt, "a", defaultRunAddr, "address and port to run server")
 	flag.StringVar(&options.baseAddrOpt, "b", defaultBaseAddr, "shortener address")
+	flag.StringVar(&options.fileStorOpt, "f", defaultFileStor, "file strorager path")
+	//flag.Parse()
 	res.ParseFlags()
 
 	hp := strings.Split(options.runAddrOpt, ":")
@@ -72,6 +87,8 @@ func NewConfig() Config {
 			res.baseAddr.Path = "/" + res.baseAddr.Path
 		}
 	}
+
+	res.fileStor = options.fileStorOpt
 
 	return res
 }

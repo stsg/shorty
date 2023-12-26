@@ -3,56 +3,19 @@ package storage
 import (
 	"errors"
 	"math/rand"
+
+	"github.com/stsg/shorty/internal/config"
 )
 
-const ShortURLLength = 6
-
-type MapStorage struct {
-	m map[string]string
+type Storage interface {
+	Save(shortURL string, longURL string) error
+	GetRealURL(shortURL string) (string, error)
+	GetShortURL(longURL string) (string, error)
+	IsRealURLExist(longURL string) bool
+	IsShortURLExist(longURL string) bool
 }
 
-func (s MapStorage) SetShorURL(shortURL string, longURL string) error {
-	_, exist := s.m[shortURL]
-	if exist {
-		return errors.New("short URL already exist")
-	}
-	s.m[shortURL] = longURL
-	return nil
-}
-
-func NewMapStorage() *MapStorage {
-	return &MapStorage{m: make(map[string]string)}
-}
-
-func (s *MapStorage) GetRealURL(shortURL string) (string, error) {
-	if len(shortURL) > ShortURLLength {
-		return "", errors.New("short URL longer than ShortURLLength")
-	}
-	longURL, exist := s.m[shortURL]
-	if !exist {
-		return "", errors.New("short URL not exist")
-	}
-	return longURL, nil
-}
-
-func (s *MapStorage) GetShortURL(longURL string) (string, error) {
-	for surl, lurl := range s.m {
-		if lurl == longURL {
-			return surl, errors.New("short URL already exist: ")
-		}
-	}
-	for {
-		surl := genShortURL()
-		_, exist := s.m[surl]
-		if !exist {
-			s.SetShorURL(surl, longURL)
-			// s.m[surl] = longURL
-			return surl, nil
-		}
-	}
-}
-
-func genShortURL() string {
+func GenShortURL() string {
 	charset := "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 	shortURL := make([]byte, ShortURLLength)
@@ -60,4 +23,12 @@ func genShortURL() string {
 		shortURL[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(shortURL)
+}
+
+func New(conf config.Config) (Storage, error) {
+	f, err := NewFileStorage(conf)
+	if err != nil {
+		return nil, errors.New("canot create filestorage")
+	}
+	return f, nil
 }
