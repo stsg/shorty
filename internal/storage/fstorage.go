@@ -19,9 +19,9 @@ type FileStorage struct {
 }
 
 type fileMap struct {
-	UUID      string `json:"uuid"`
-	Short_URL string `json:"short_url"`
-	Long_URL  string `json:"original_url"`
+	UUID     string `json:"uuid"`
+	ShortURL string `json:"short_url"`
+	LongURL  string `json:"original_url"`
 }
 
 func NewFileStorage(config config.Config) (*FileStorage, error) {
@@ -53,9 +53,9 @@ func NewFileStorage(config config.Config) (*FileStorage, error) {
 
 func (s *FileStorage) Save(shortURL string, longURL string) error {
 	var fMap = fileMap{
-		UUID:      strconv.Itoa(s.count),
-		Short_URL: shortURL,
-		Long_URL:  longURL,
+		UUID:     strconv.Itoa(s.count),
+		ShortURL: shortURL,
+		LongURL:  longURL,
 	}
 
 	s.fm = append(s.fm, fMap)
@@ -101,8 +101,8 @@ func (s *FileStorage) GetRealURL(shortURL string) (string, error) {
 			fmt.Println("cannot read JSON from file", err)
 			continue
 		}
-		if fMap.Short_URL == shortURL {
-			return fMap.Long_URL, nil
+		if fMap.ShortURL == shortURL {
+			return fMap.LongURL, nil
 		}
 	}
 	err = scanner.Err()
@@ -110,7 +110,7 @@ func (s *FileStorage) GetRealURL(shortURL string) (string, error) {
 		fmt.Println("cannot scan JSON from file")
 		return "", err
 	}
-	return "", nil
+	return "", errors.New("short URL not exist")
 }
 
 func (s *FileStorage) GetShortURL(longURL string) (string, error) {
@@ -133,10 +133,10 @@ func (s *FileStorage) GetShortURL(longURL string) (string, error) {
 			fmt.Println("cannot read JSON from file", err)
 			continue
 		}
-		if fMap.Long_URL == longURL {
-			return fMap.Short_URL, errors.New("short URL already exist")
+		if fMap.LongURL == longURL {
+			return fMap.ShortURL, errors.New("short URL already exist")
 		}
-		if fMap.Short_URL == shortURL {
+		if fMap.ShortURL == shortURL {
 			shortURL = GenShortURL()
 		}
 	}
@@ -160,7 +160,7 @@ func (s *FileStorage) IsShortURLExist(shortURL string) bool {
 		if err != nil {
 			continue
 		}
-		if fMap.Short_URL == shortURL {
+		if fMap.ShortURL == shortURL {
 			return true
 		}
 	}
@@ -183,7 +183,7 @@ func (s *FileStorage) IsRealURLExist(longURL string) bool {
 		if err != nil {
 			continue
 		}
-		if fMap.Long_URL == longURL {
+		if fMap.LongURL == longURL {
 			return true
 		}
 	}
