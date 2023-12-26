@@ -1,8 +1,5 @@
 package config
 
-// Флаг -a отвечает за адрес запуска HTTP-сервера (значение может быть таким: localhost:8888).
-// Флаг -b отвечает за базовый адрес результирующего сокращённого URL (значение: адрес сервера перед коротким URL, например http://localhost:8000/qsd54gFg).
-
 import (
 	"errors"
 	"flag"
@@ -90,19 +87,3 @@ func NewConfig() Config {
 
 	return res
 }
-
-// func (conf *Config) ParseFlags() error {
-// 	// flag.StringVar(&options.runAddrOpt, "a", defaultRunAddr, "address and port to run server")
-// 	// flag.StringVar(&options.baseAddrOpt, "b", defaultBaseAddr, "shortener address")
-// 	flag.Parse()
-// 	return nil
-// }
-
-// func (conf *Config) ParseEnv() error {
-// 	err := env.Parse(&options)
-// 	if err != nil {
-// 		// OS environment parsing error
-// 		return err
-// 	}
-// 	return nil
-// }
