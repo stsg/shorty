@@ -56,9 +56,9 @@ func Test_getShortURL(t *testing.T) {
 			name:    "getShortURL #3",
 			method:  http.MethodPost,
 			url:     "/",
-			request: "https://ya.ru",
+			request: "https://www.google.com",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusCreated,
 				contentType: "",
 				response:    "",
 			},
@@ -79,9 +79,6 @@ func Test_getShortURL(t *testing.T) {
 	conf = config.NewConfig()
 	strg, err := storage.New(conf)
 	assert.NoError(t, err, "Error creating storage")
-
-	// for testing
-	strg.Save("123456", "https://www.google.com")
 
 	hndl := handle.NewHandle(conf, strg)
 
@@ -179,9 +176,6 @@ func Test_getRealURL(t *testing.T) {
 	strg, err := storage.New(conf)
 	assert.NoError(t, err, "Error creating storage")
 
-	// for testing
-	strg.Save("123456", "https://www.google.com")
-
 	hndl := handle.NewHandle(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortID)
@@ -251,7 +245,7 @@ func Test_getShortURLJSON(t *testing.T) {
 			method: http.MethodPost,
 			url:    "/api/shorten",
 			request: reqJSON{
-				URL: "https://ya.ru",
+				URL: "https://yandex.ru",
 			},
 			want: want{
 				statusCode:  http.StatusCreated,
@@ -266,7 +260,7 @@ func Test_getShortURLJSON(t *testing.T) {
 			method: http.MethodPost,
 			url:    "/api/shorten",
 			request: reqJSON{
-				URL: "https://ya.ru",
+				URL: "https://yandex.ru",
 			},
 			want: want{
 				statusCode:  http.StatusBadRequest,
@@ -296,9 +290,6 @@ func Test_getShortURLJSON(t *testing.T) {
 	// conf = config.NewConfig()
 	strg, err := storage.New(conf)
 	assert.NoError(t, err, "Error creating storage")
-
-	// for testing
-	strg.Save("123456", "https://www.google.com")
 
 	hndl := handle.NewHandle(conf, strg)
 

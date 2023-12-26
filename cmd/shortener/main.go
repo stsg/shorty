@@ -25,11 +25,6 @@ func main() {
 	}
 	hndl := handle.NewHandle(conf, strg)
 
-	// for testing
-	if !strg.IsRealURLExist("https://www.google.com") {
-		strg.Save("123456", "https://www.google.com")
-	}
-
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		panic(errors.New("cannot create logger"))
