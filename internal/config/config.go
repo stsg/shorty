@@ -15,9 +15,9 @@ const defaultBaseAddr string = "http://localhost:8080"
 const defaultFileStor string = "/tmp/short-url-db.json"
 
 type options struct {
-	runAddrOpt  string `env:"SERVER_ADDRESS"`
-	baseAddrOpt string `env:"BASE_URL"`
-	fileStorOpt string `env:"FILE_STORAGE_PATH"`
+	RunAddrOpt  string `env:"SERVER_ADDRESS"`
+	BaseAddrOpt string `env:"BASE_URL"`
+	FileStorOpt string `env:"FILE_STORAGE_PATH"`
 }
 
 type NetAddress struct {
@@ -47,11 +47,10 @@ func NewConfig() Config {
 	res := Config{}
 	opt := options{}
 
-	flag.StringVar(&opt.runAddrOpt, "a", defaultRunAddr, "address and port to run server")
-	flag.StringVar(&opt.baseAddrOpt, "b", defaultBaseAddr, "shortener address")
-	flag.StringVar(&opt.fileStorOpt, "f", defaultFileStor, "file strorager path")
+	flag.StringVar(&opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
+	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
+	flag.StringVar(&opt.FileStorOpt, "f", defaultFileStor, "file strorager path")
 	flag.Parse()
-	// res.ParseFlags()
 
 	err := env.Parse(&opt)
 	if err != nil {
@@ -59,7 +58,7 @@ func NewConfig() Config {
 		panic(errors.New("cannot parse OS environment"))
 	}
 
-	hp := strings.Split(opt.runAddrOpt, ":")
+	hp := strings.Split(opt.RunAddrOpt, ":")
 	if len(hp) != 2 {
 		panic(errors.New("need address in a form host:port"))
 	}
@@ -70,8 +69,8 @@ func NewConfig() Config {
 	res.runAddr.host = hp[0]
 	res.runAddr.port = port
 
-	opt.baseAddrOpt = strings.TrimSuffix(opt.baseAddrOpt, "/")
-	res.baseAddr, err = url.Parse(opt.baseAddrOpt)
+	opt.BaseAddrOpt = strings.TrimSuffix(opt.BaseAddrOpt, "/")
+	res.baseAddr, err = url.Parse(opt.BaseAddrOpt)
 	if err != nil {
 		panic(errors.New("cannot parse base address"))
 	}
@@ -83,7 +82,6 @@ func NewConfig() Config {
 		}
 	}
 
-	res.fileStor = opt.fileStorOpt
-
+	res.fileStor = opt.FileStorOpt
 	return res
 }
