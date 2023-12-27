@@ -8,12 +8,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"go.uber.org/zap"
-
 	"github.com/stsg/shorty/internal/config"
 	"github.com/stsg/shorty/internal/handle"
 	mylogger "github.com/stsg/shorty/internal/logger"
 	"github.com/stsg/shorty/internal/storage"
+
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -21,7 +21,6 @@ func main() {
 	strg, err := storage.New(conf)
 	if err != nil {
 		panic(err)
-		// errors.New("cannot create storage"))
 	}
 	hndl := handle.NewHandle(conf, strg)
 

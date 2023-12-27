@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -62,6 +61,11 @@ func (s *FileStorage) Save(shortURL string, longURL string) error {
 	if err != nil {
 		return err
 	}
+	err = s.Open()
+	if err != nil {
+		return err
+	}
+	defer s.File.Close()
 	_, err = s.File.Write(append(jsonData, byte('\n')))
 	if err != nil {
 		return err
@@ -84,88 +88,40 @@ func (s *FileStorage) Close() error {
 }
 
 func (s *FileStorage) GetRealURL(shortURL string) (string, error) {
-	var fMap fileMap
-
-	err := s.Open()
-	if err != nil {
-		fmt.Println("cannot open file")
-		return "", err
-	}
-	defer s.File.Close()
-
-	scanner := bufio.NewScanner(s.File)
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		err := json.Unmarshal(line, &fMap)
-		if err != nil {
-			fmt.Println("cannot read JSON from file", err)
-			continue
+	for key := range s.fm {
+		if s.fm[key].ShortURL == shortURL {
+			return s.fm[key].LongURL, nil
 		}
-		if fMap.ShortURL == shortURL {
-			return fMap.LongURL, nil
-		}
-	}
-	err = scanner.Err()
-	if err != nil {
-		fmt.Println("cannot scan JSON from file")
-		return "", err
 	}
 	return "", errors.New("short URL not exist")
 }
 
 func (s *FileStorage) GetShortURL(longURL string) (string, error) {
-	var fMap fileMap
-
-	err := s.Open()
-	if err != nil {
-		fmt.Println("cannot open file")
-		return "", err
+	for key := range s.fm {
+		if s.fm[key].LongURL == longURL {
+			return s.fm[key].ShortURL, errors.New("short URL already exist")
+		}
 	}
-	defer s.File.Close()
-
 	shortURL := GenShortURL()
-
-	scanner := bufio.NewScanner(s.File)
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		err := json.Unmarshal(line, &fMap)
-		if err != nil {
-			fmt.Println("cannot read JSON from file", err)
-			continue
-		}
-		if fMap.LongURL == longURL {
-			return fMap.ShortURL, errors.New("short URL already exist")
-		}
-		if fMap.ShortURL == shortURL {
-			shortURL = GenShortURL()
-		}
-	}
-
 	if longURL == "https://www.google.com" {
 		shortURL = "123456"
 	}
-
-	s.Save(shortURL, longURL)
-	return shortURL, nil
+	for {
+		if !s.IsShortURLExist(shortURL) {
+			err := s.Save(shortURL, longURL)
+			if err == nil {
+				return shortURL, nil
+			} else {
+				return "", err
+			}
+		}
+		shortURL = GenShortURL()
+	}
 }
 
 func (s *FileStorage) IsShortURLExist(shortURL string) bool {
-	var fMap fileMap
-
-	err := s.Open()
-	if err != nil {
-		return false
-	}
-	defer s.File.Close()
-
-	scanner := bufio.NewScanner(s.File)
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		err := json.Unmarshal(line, &fMap)
-		if err != nil {
-			continue
-		}
-		if fMap.ShortURL == shortURL {
+	for key := range s.fm {
+		if s.fm[key].ShortURL == shortURL {
 			return true
 		}
 	}
@@ -173,22 +129,8 @@ func (s *FileStorage) IsShortURLExist(shortURL string) bool {
 }
 
 func (s *FileStorage) IsRealURLExist(longURL string) bool {
-	var fMap fileMap
-
-	err := s.Open()
-	if err != nil {
-		return false
-	}
-	defer s.File.Close()
-
-	scanner := bufio.NewScanner(s.File)
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		err := json.Unmarshal(line, &fMap)
-		if err != nil {
-			continue
-		}
-		if fMap.LongURL == longURL {
+	for key := range s.fm {
+		if s.fm[key].LongURL == longURL {
 			return true
 		}
 	}

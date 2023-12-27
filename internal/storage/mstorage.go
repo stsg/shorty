@@ -67,13 +67,3 @@ func (s *MapStorage) IsRealURLExist(longURL string) bool {
 	}
 	return false
 }
-
-// func genShortURL() string {
-// 	charset := "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-
-// 	shortURL := make([]byte, ShortURLLength)
-// 	for i := range shortURL {
-// 		shortURL[i] = charset[rand.Intn(len(charset))]
-// 	}
-// 	return string(shortURL)
-// }

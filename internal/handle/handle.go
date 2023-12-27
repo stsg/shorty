@@ -15,9 +15,7 @@ import (
 
 type Handle struct {
 	config config.Config
-	//mstrg  storage.MapStorage
-	//fstrg  storage.FileStorage
-	strg storage.Storage
+	strg   storage.Storage
 }
 
 type reqJSON struct {
@@ -31,8 +29,6 @@ type resJSON struct {
 func NewHandle(config config.Config, strg storage.Storage) Handle {
 	hndl := Handle{}
 	hndl.config = config
-	// hndl.mstrg = mstrg
-	// hndl.fstrg = fstrg
 	hndl.strg = strg
 
 	return hndl
@@ -89,7 +85,6 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 		rw.Write([]byte(body))
 		return
 	}
-	//lurl := reqJSON.URL
 	rwJSON.Result, err = h.strg.GetShortURL(rqJSON.URL)
 	rwJSON.Result = h.config.GetBaseAddr() + "/" + rwJSON.Result
 	if err != nil {

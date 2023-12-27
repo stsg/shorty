@@ -19,16 +19,15 @@ type options struct {
 	BaseAddrOpt string `env:"BASE_URL"`
 	FileStorOpt string `env:"FILE_STORAGE_PATH"`
 }
-
 type NetAddress struct {
 	host string
 	port int
 }
 
 type Config struct {
-	runAddr  NetAddress // `env:"SERVER_ADDRESS"`
-	baseAddr *url.URL   // `env:"BASE_URL"`
-	fileStor string     // `env:"FILE_STORAGE_PATH"`
+	runAddr  NetAddress
+	baseAddr *url.URL
+	fileStor string
 }
 
 func (conf Config) GetRunAddr() string {
@@ -82,6 +81,10 @@ func NewConfig() Config {
 		}
 	}
 
-	res.fileStor = opt.FileStorOpt
+	if opt.FileStorOpt != "" {
+		res.fileStor = opt.FileStorOpt
+	} else {
+		res.fileStor = "/dev/null"
+	}
 	return res
 }
