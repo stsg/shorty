@@ -74,7 +74,6 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
 		panic(errors.New("cannot read request body"))
-		return
 	}
 	err = json.Unmarshal(url, &rqJSON)
 	if err != nil {
