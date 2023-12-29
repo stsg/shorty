@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -74,7 +73,7 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
-		fmt.Println("cannot read body requets")
+		panic(errors.New("cannot read request body"))
 		return
 	}
 	err = json.Unmarshal(url, &rqJSON)

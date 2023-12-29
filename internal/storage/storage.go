@@ -28,7 +28,7 @@ func GenShortURL() string {
 func New(conf config.Config) (Storage, error) {
 	f, err := NewFileStorage(conf)
 	if err != nil {
-		return nil, errors.New("canot create filestorage")
+		return nil, errors.New("cannot create storage")
 	}
 	return f, nil
 }

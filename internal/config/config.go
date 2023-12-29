@@ -48,7 +48,7 @@ func NewConfig() Config {
 
 	flag.StringVar(&opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
 	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
-	flag.StringVar(&opt.FileStorOpt, "f", defaultFileStor, "file strorager path")
+	flag.StringVar(&opt.FileStorOpt, "f", defaultFileStor, "file storage path")
 	flag.Parse()
 
 	err := env.Parse(&opt)
