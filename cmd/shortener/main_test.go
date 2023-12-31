@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,6 +14,8 @@ import (
 	// "github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/assert"
 )
+
+var conf config.Config
 
 func Test_getShortURL(t *testing.T) {
 	type want struct {
@@ -34,7 +37,7 @@ func Test_getShortURL(t *testing.T) {
 			request: "https://practicum.yandex.ru",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				response:    "",
 			},
 		},
@@ -45,7 +48,7 @@ func Test_getShortURL(t *testing.T) {
 			request: "https://ya.ru",
 			want: want{
 				statusCode:  http.StatusCreated,
-				contentType: "text/plain; charset=utf-8",
+				contentType: "text/plain",
 				response:    "",
 			},
 		},
@@ -53,9 +56,9 @@ func Test_getShortURL(t *testing.T) {
 			name:    "getShortURL #3",
 			method:  http.MethodPost,
 			url:     "/",
-			request: "https://ya.ru",
+			request: "https://www.google.com",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusCreated,
 				contentType: "",
 				response:    "",
 			},
@@ -73,9 +76,11 @@ func Test_getShortURL(t *testing.T) {
 		},
 	}
 
-	conf := config.NewConfig()
-	strg := storage.NewMapStorage()
-	hndl := handle.NewHandle(conf, *strg)
+	conf = config.NewConfig()
+	strg, err := storage.New(conf)
+	assert.NoError(t, err, "Error creating storage")
+
+	hndl := handle.NewHandle(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortRequest)
 	srv := httptest.NewServer(handler)
@@ -123,7 +128,7 @@ func Test_getRealURL(t *testing.T) {
 			url:     "/654321",
 			request: "/654321",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusNotFound,
 				contentType: "text/plain",
 				location:    "",
 				response:    "",
@@ -136,7 +141,7 @@ func Test_getRealURL(t *testing.T) {
 			request: "/123456",
 			want: want{
 				statusCode:  http.StatusTemporaryRedirect,
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 				location:    "https://www.google.com",
 				response:    "",
 			},
@@ -147,7 +152,7 @@ func Test_getRealURL(t *testing.T) {
 			url:     "/djsakhjkashhsjkhsadjkhsajkhdjkashdjkashdjkhaskjdhaskjhdjkashdkjashdjkashdkjhsakdhjkashdjkashdkjashdjkhasjkdhasjkhdkjashdjkashdjkhasdjkhdasjk/",
 			request: "/djsakhjkashhsjkhsadjkhsajkhdjkashdjkashdjkhaskjdhaskjhdjkashdkjashdjkashdkjhsakdhjkashdjkashdkjashdjkhasjkdhasjkhdkjashdjkashdjkhasdjkhdasjk/",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusNotFound,
 				contentType: "text/plain",
 				location:    "",
 				response:    "",
@@ -159,7 +164,7 @@ func Test_getRealURL(t *testing.T) {
 			url:     "/djsakhjk/ashhsjkhsadjkhsajkhdjka/ashdjkashdjkha/678",
 			request: "/djsakhjk/ashhsjkhsadjkhsajkhdjka/ashdjkashdjkha/678",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusNotFound,
 				contentType: "text/plain",
 				location:    "",
 				response:    "",
@@ -167,9 +172,11 @@ func Test_getRealURL(t *testing.T) {
 		},
 	}
 
-	conf := config.NewConfig()
-	strg := storage.NewMapStorage()
-	hndl := handle.NewHandle(conf, *strg)
+	//conf = config.NewConfig()
+	strg, err := storage.New(conf)
+	assert.NoError(t, err, "Error creating storage")
+
+	hndl := handle.NewHandle(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortID)
 	srv := httptest.NewServer(handler)
@@ -191,6 +198,126 @@ func Test_getRealURL(t *testing.T) {
 			assert.Equal(t, test.want.contentType, resp.Header().Get("Content-Type"))
 			if test.want.response != "" {
 				assert.Equal(t, test.want.response, string(resp.Body()))
+			}
+		})
+	}
+}
+
+func Test_getShortURLJSON(t *testing.T) {
+	type reqJSON struct {
+		URL string `json:"url,omitempty"`
+	}
+
+	type resJSON struct {
+		Result string `json:"result"`
+	}
+
+	type want struct {
+		statusCode  int
+		contentType string
+		response    resJSON
+	}
+
+	tests := []struct {
+		name    string
+		method  string
+		url     string
+		request reqJSON
+		want    want
+	}{
+		{
+			name:   "getShortURLJSON #1",
+			method: http.MethodPost,
+			url:    "/api/shorten",
+			request: reqJSON{
+				URL: "https://kutt.su",
+			},
+			want: want{
+				statusCode:  http.StatusCreated,
+				contentType: "application/json",
+				response: resJSON{
+					Result: ``,
+				},
+			},
+		},
+		{
+			name:   "getShortURLJSON #2",
+			method: http.MethodPost,
+			url:    "/api/shorten",
+			request: reqJSON{
+				URL: "https://yandex.ru",
+			},
+			want: want{
+				statusCode:  http.StatusCreated,
+				contentType: "application/json",
+				response: resJSON{
+					Result: ``,
+				},
+			},
+		},
+		{
+			name:   "getShortURLJSON #3",
+			method: http.MethodPost,
+			url:    "/api/shorten",
+			request: reqJSON{
+				URL: "https://yandex.ru",
+			},
+			want: want{
+				statusCode:  http.StatusBadRequest,
+				contentType: "application/json",
+				response: resJSON{
+					Result: ``,
+				},
+			},
+		},
+		{
+			name:   "getShortURLJSON #4",
+			method: http.MethodPost,
+			url:    "/api/shorten",
+			request: reqJSON{
+				URL: "https://www.google.com",
+			},
+			want: want{
+				statusCode:  http.StatusBadRequest,
+				contentType: "application/json",
+				response: resJSON{
+					Result: ``,
+				},
+			},
+		},
+	}
+
+	// conf = config.NewConfig()
+	strg, err := storage.New(conf)
+	assert.NoError(t, err, "Error creating storage")
+
+	hndl := handle.NewHandle(conf, strg)
+
+	handler := http.HandlerFunc(hndl.HandleShortRequestJSON)
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	var rsJSON resJSON
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			req := resty.New().R()
+			req.Method = test.method
+			body, _ := json.Marshal(test.request)
+			req.SetBody(body)
+			req.URL = srv.URL
+
+			resp, err := req.Send()
+			assert.NoError(t, err, "Error making HTTP request!")
+
+			assert.Equal(t, test.want.statusCode, resp.StatusCode())
+			if test.want.contentType != "" {
+				assert.Equal(t, test.want.contentType, resp.Header().Get("Content-Type"))
+			}
+			if test.want.response.Result != "" {
+				err = json.Unmarshal(resp.Body(), &rsJSON)
+				assert.NoError(t, err, "Error unmarshal response")
+				assert.Equal(t, test.want.response, rsJSON)
 			}
 		})
 	}

@@ -1,12 +1,8 @@
 package config
 
-// Флаг -a отвечает за адрес запуска HTTP-сервера (значение может быть таким: localhost:8888).
-// Флаг -b отвечает за базовый адрес результирующего сокращённого URL (значение: адрес сервера перед коротким URL, например http://localhost:8000/qsd54gFg).
-
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -15,23 +11,23 @@ import (
 )
 
 const defaultRunAddr string = "localhost:8080"
-const defaultBaseAddr string = "http://localhost"
+const defaultBaseAddr string = "http://localhost:8080"
+const defaultFileStor string = "/tmp/short-url-db.json"
 
-type Options struct {
-	runAddrOpt  string `env:"SERVER_ADDRESS"`
-	baseAddrOpt string `env:"BASE_URL"`
+type options struct {
+	RunAddrOpt  string `env:"SERVER_ADDRESS"`
+	BaseAddrOpt string `env:"BASE_URL"`
+	FileStorOpt string `env:"FILE_STORAGE_PATH"`
 }
-
-var options Options
-
 type NetAddress struct {
 	host string
 	port int
 }
 
 type Config struct {
-	runAddr  NetAddress `env:"SERVER_ADDRESS"`
-	baseAddr *url.URL   `env:"BASE_URL"`
+	runAddr  NetAddress
+	baseAddr *url.URL
+	fileStor string
 }
 
 func (conf Config) GetRunAddr() string {
@@ -42,13 +38,26 @@ func (conf Config) GetBaseAddr() string {
 	return conf.baseAddr.String()
 }
 
-func NewConfig() *Config {
-	res := &Config{}
+func (conf Config) GetFileStor() string {
+	return conf.fileStor
+}
 
-	res.ParseEnv()
-	res.ParseFlags()
+func NewConfig() Config {
+	res := Config{}
+	opt := options{}
 
-	hp := strings.Split(options.runAddrOpt, ":")
+	flag.StringVar(&opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
+	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
+	flag.StringVar(&opt.FileStorOpt, "f", defaultFileStor, "file storage path")
+	flag.Parse()
+
+	err := env.Parse(&opt)
+	if err != nil {
+		// OS environment parsing error
+		panic(errors.New("cannot parse OS environment"))
+	}
+
+	hp := strings.Split(opt.RunAddrOpt, ":")
 	if len(hp) != 2 {
 		panic(errors.New("need address in a form host:port"))
 	}
@@ -59,9 +68,8 @@ func NewConfig() *Config {
 	res.runAddr.host = hp[0]
 	res.runAddr.port = port
 
-	fmt.Println("0 RunAddr: " + res.GetRunAddr())
-
-	res.baseAddr, err = url.Parse(options.baseAddrOpt)
+	opt.BaseAddrOpt = strings.TrimSuffix(opt.BaseAddrOpt, "/")
+	res.baseAddr, err = url.Parse(opt.BaseAddrOpt)
 	if err != nil {
 		panic(errors.New("cannot parse base address"))
 	}
@@ -73,22 +81,10 @@ func NewConfig() *Config {
 		}
 	}
 
-	fmt.Println("0 BaseAddr: " + res.GetBaseAddr())
-	return res
-}
-
-func (conf *Config) ParseFlags() error {
-	flag.StringVar(&options.runAddrOpt, "a", defaultRunAddr, "address and port to run server")
-	flag.StringVar(&options.baseAddrOpt, "b", defaultBaseAddr, "shortener address")
-	flag.Parse()
-	return nil
-}
-
-func (conf *Config) ParseEnv() error {
-	err := env.Parse(conf)
-	if err != nil {
-		// OS environment parsing error
-		return err
+	if opt.FileStorOpt != "" {
+		res.fileStor = opt.FileStorOpt
+	} else {
+		res.fileStor = "/dev/null"
 	}
-	return nil
+	return res
 }
