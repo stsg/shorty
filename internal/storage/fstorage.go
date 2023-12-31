@@ -103,9 +103,15 @@ func (s *FileStorage) GetShortURL(longURL string) (string, error) {
 		}
 	}
 	shortURL := GenShortURL()
+
+	// TODO: move to testsuite
+	// from @rktkov
+	// Выглядит как сохранение тестового значения для будущего использования.
+	// Не стоит таким образом инициализировать тестовые кейсы.
 	if longURL == "https://www.google.com" {
 		shortURL = "123456"
 	}
+
 	for {
 		if !s.IsShortURLExist(shortURL) {
 			err := s.Save(shortURL, longURL)

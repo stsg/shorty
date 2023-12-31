@@ -51,12 +51,8 @@ func (s *MapStorage) GetShortURL(longURL string) (string, error) {
 }
 
 func (s *MapStorage) IsShortURLExist(shortURL string) bool {
-	for surl := range s.m {
-		if surl == shortURL {
-			return true
-		}
-	}
-	return false
+	_, exist := s.m[shortURL]
+	return exist
 }
 
 func (s *MapStorage) IsRealURLExist(longURL string) bool {
