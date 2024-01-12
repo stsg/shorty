@@ -142,3 +142,12 @@ func (s *FileStorage) IsRealURLExist(longURL string) bool {
 	}
 	return false
 }
+
+func (s *FileStorage) IsReady() error {
+	err := s.Open()
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	return nil
+}

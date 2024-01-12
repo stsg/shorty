@@ -33,6 +33,19 @@ func NewHandle(config config.Config, storage storage.Storage) Handle {
 	return hndl
 }
 
+func (h *Handle) HandlePing(rw http.ResponseWriter, req *http.Request) {
+	err := h.storage.IsReady()
+	if err != nil {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	rw.Header().Set("Content-Type", "text/plain")
+	rw.WriteHeader(http.StatusOK)
+	rw.Write([]byte("pong"))
+}
+
 func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")

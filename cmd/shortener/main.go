@@ -39,6 +39,7 @@ func main() {
 	r.Use(middleware.Compress(5, "application/json", "text/html"))
 
 	r.Post("/", hndl.HandleShortRequest)
+	r.Get("/ping", hndl.HandlePing)
 	r.Get("/{id}", hndl.HandleShortID)
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/shorten", hndl.HandleShortRequestJSON)

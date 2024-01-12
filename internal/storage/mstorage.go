@@ -14,7 +14,7 @@ func NewMapStorage() *MapStorage {
 	return &MapStorage{m: make(map[string]string)}
 }
 
-func (s MapStorage) Save(shortURL string, longURL string) error {
+func (s *MapStorage) Save(shortURL string, longURL string) error {
 	_, exist := s.m[shortURL]
 	if exist {
 		return errors.New("short URL already exist")
@@ -62,4 +62,8 @@ func (s *MapStorage) IsRealURLExist(longURL string) bool {
 		}
 	}
 	return false
+}
+
+func (s *MapStorage) IsReady() error {
+	return nil
 }
