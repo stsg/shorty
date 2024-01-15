@@ -91,37 +91,24 @@ func (s *DBStorage) IsShortURLExist(shortURL string) bool {
 	var longURL string
 	query := "SELECT original_url FROM urls WHERE short_url = $1"
 	err := s.db.QueryRow(query, shortURL).Scan(&longURL)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false
-	}
-	return true
+	return !errors.Is(err, sql.ErrNoRows)
 }
 
 func (s *DBStorage) IsRealURLExist(longURL string) bool {
 	var shortURL string
 	query := "SELECT short_url FROM urls WHERE original_url = $1"
 	err := s.db.QueryRow(query, longURL).Scan(&shortURL)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false
-	}
-	return true
+	return !errors.Is(err, sql.ErrNoRows)
 }
 
 func (s *DBStorage) IsReady() bool {
 	err := s.db.Ping()
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func IsTableExist(db *sql.DB, table string) bool {
 	var n int64
 	query := "SELECT 1 FROM information_schema.tables WHERE table_name = $1"
 	err := db.QueryRow(query, table).Scan(&n)
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
