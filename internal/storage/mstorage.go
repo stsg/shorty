@@ -35,17 +35,20 @@ func (s *MapStorage) GetRealURL(shortURL string) (string, error) {
 }
 
 func (s *MapStorage) GetShortURL(longURL string) (string, error) {
-	for surl, lurl := range s.m {
-		if lurl == longURL {
-			return surl, errors.New("short URL already exist: ")
+	for sURL, lURL := range s.m {
+		if lURL == longURL {
+			return sURL, errors.New("short URL already exist: ")
 		}
 	}
 	for {
-		surl := GenShortURL()
-		_, exist := s.m[surl]
+		sURL := GenShortURL()
+		_, exist := s.m[sURL]
 		if !exist {
-			s.Save(surl, longURL)
-			return surl, nil
+			err := s.Save(sURL, longURL)
+			if err != nil {
+				return "", err
+			}
+			return sURL, nil
 		}
 	}
 }
@@ -56,8 +59,8 @@ func (s *MapStorage) IsShortURLExist(shortURL string) bool {
 }
 
 func (s *MapStorage) IsRealURLExist(longURL string) bool {
-	for _, lurl := range s.m {
-		if lurl == longURL {
+	for _, lURL := range s.m {
+		if lURL == longURL {
 			return true
 		}
 	}

@@ -45,17 +45,17 @@ func ZapLogger(logger *zap.Logger) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(ww, r)
 
-			var respheaders []string
-			var rfields []zapcore.Field
+			var respHeaders []string
+			var rFields []zapcore.Field
 
 			for k := range ww.Header() {
-				respheaders = append(respheaders, k)
+				respHeaders = append(respHeaders, k)
 			}
 
-			for _, h := range respheaders {
-				rfields = append(rfields, zap.String(h, ww.Header().Get(h)))
+			for _, h := range respHeaders {
+				rFields = append(rFields, zap.String(h, ww.Header().Get(h)))
 			}
-			logger.Info("respheader", rfields...)
+			logger.Info("respHeader", rFields...)
 
 			dur := time.Since(then)
 			status := ww.Status()
