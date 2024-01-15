@@ -27,7 +27,7 @@ func NewFileStorage(config config.Config) (*FileStorage, error) {
 	var fMap fileMap
 
 	fs := &FileStorage{
-		Path:  config.GetFileStor(),
+		Path:  config.GetFileStorage(),
 		count: 0,
 	}
 	err := fs.Open()
@@ -143,11 +143,11 @@ func (s *FileStorage) IsRealURLExist(longURL string) bool {
 	return false
 }
 
-func (s *FileStorage) IsReady() error {
+func (s *FileStorage) IsReady() bool {
 	err := s.Open()
 	if err != nil {
-		return err
+		return false
 	}
 	defer s.Close()
-	return nil
+	return true
 }

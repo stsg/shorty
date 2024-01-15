@@ -13,7 +13,7 @@ type Storage interface {
 	GetShortURL(longURL string) (string, error)
 	IsRealURLExist(longURL string) bool
 	IsShortURLExist(longURL string) bool
-	IsReady() error
+	IsReady() bool
 }
 
 func GenShortURL() string {
@@ -27,9 +27,23 @@ func GenShortURL() string {
 }
 
 func New(conf config.Config) (Storage, error) {
-	f, err := NewFileStorage(conf)
-	if err != nil {
-		return nil, errors.New("cannot create storage")
+	if conf.GetStorageType() == "file" {
+		storage, err := NewFileStorage(conf)
+		if err != nil {
+
+			return nil, errors.New("cannot create file storage")
+		}
+		return storage, nil
 	}
-	return f, nil
+
+	if conf.GetStorageType() == "db" {
+		storage, err := NewDBStorage(conf)
+		if err != nil {
+			return nil, errors.New("cannot create DB storage")
+		}
+		return storage, nil
+	}
+
+	storage, _ := NewMapStorage()
+	return storage, nil
 }

@@ -26,30 +26,31 @@ type resJSON struct {
 }
 
 func NewHandle(config config.Config, storage storage.Storage) Handle {
-	hndl := Handle{}
-	hndl.config = config
-	hndl.storage = storage
+	handle := Handle{}
+	handle.config = config
+	handle.storage = storage
 
-	return hndl
+	return handle
 }
 
 func (h *Handle) HandlePing(rw http.ResponseWriter, req *http.Request) {
-	err := h.storage.IsReady()
-	if err != nil {
+	ping := strings.TrimPrefix(req.URL.Path, "/")
+	ping = strings.TrimSuffix(ping, "/")
+	if !h.storage.IsReady() {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte(err.Error()))
+		rw.Write([]byte("storage not ready"))
 		return
 	}
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusOK)
-	rw.Write([]byte("pong"))
+	rw.Write([]byte(ping + " - pong"))
 }
 
 func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")
-	lurl, err := h.storage.GetRealURL(id)
+	longURL, err := h.storage.GetRealURL(id)
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusNotFound)
@@ -57,9 +58,9 @@ func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 		return
 
 	}
-	rw.Header().Set("Location", lurl)
+	rw.Header().Set("Location", longURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
-	rw.Write([]byte(lurl))
+	rw.Write([]byte(longURL))
 }
 
 func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
@@ -67,8 +68,8 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(errors.New("cannot read request body"))
 	}
-	lurl := string(url)
-	surl, err := h.storage.GetShortURL(lurl)
+	longURL := string(url)
+	shortURL, err := h.storage.GetShortURL(longURL)
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusBadRequest)
@@ -77,7 +78,7 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	}
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
-	rw.Write([]byte(h.config.GetBaseAddr() + "/" + surl))
+	rw.Write([]byte(h.config.GetBaseAddr() + "/" + shortURL))
 }
 
 func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {

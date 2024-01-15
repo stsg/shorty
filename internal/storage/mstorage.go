@@ -10,8 +10,8 @@ type MapStorage struct {
 	m map[string]string
 }
 
-func NewMapStorage() *MapStorage {
-	return &MapStorage{m: make(map[string]string)}
+func NewMapStorage() (*MapStorage, error) {
+	return &MapStorage{m: make(map[string]string)}, nil
 }
 
 func (s *MapStorage) Save(shortURL string, longURL string) error {
@@ -64,6 +64,6 @@ func (s *MapStorage) IsRealURLExist(longURL string) bool {
 	return false
 }
 
-func (s *MapStorage) IsReady() error {
-	return nil
+func (s *MapStorage) IsReady() bool {
+	return true
 }

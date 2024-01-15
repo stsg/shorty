@@ -12,16 +12,18 @@ import (
 
 const defaultRunAddr string = "localhost:8080"
 const defaultBaseAddr string = "http://localhost:8080"
-const defaultFileStor string = "/tmp/short-url-db.json"
-const defaultDBStor string = "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
+const defaultFileStorage string = "/tmp/short-url-db.json"
 
-//const defaultDBStor string = ""
+// should be in form "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
+const defaultDBStorage string = ""
+
+//const defaultDBStorage string = ""
 
 type options struct {
-	RunAddrOpt  string `env:"SERVER_ADDRESS"`
-	BaseAddrOpt string `env:"BASE_URL"`
-	FileStorOpt string `env:"FILE_STORAGE_PATH"`
-	DBStorOpt   string `env:"DATABASE_DSN"`
+	RunAddrOpt     string `env:"SERVER_ADDRESS"`
+	BaseAddrOpt    string `env:"BASE_URL"`
+	FileStorageOpt string `env:"FILE_STORAGE_PATH"`
+	DBStorageOpt   string `env:"DATABASE_DSN"`
 }
 
 type NetAddress struct {
@@ -30,17 +32,13 @@ type NetAddress struct {
 }
 
 type Config struct {
-	runAddr  NetAddress
-	baseAddr *url.URL
-	fileStor string
-	dbStor   string
+	runAddr     NetAddress
+	baseAddr    *url.URL
+	storageType string
+	fileStorage string
+	dbStorage   string
 }
 
-// GetRunAddr returns the run address of the Config object.
-//
-// It concatenates the host and port of the run address and returns the result as a string.
-// It does not take any parameters.
-// It returns a string representing the run address.
 func (conf Config) GetRunAddr() string {
 	return conf.runAddr.host + ":" + strconv.Itoa(conf.runAddr.port)
 }
@@ -49,12 +47,16 @@ func (conf Config) GetBaseAddr() string {
 	return conf.baseAddr.String()
 }
 
-func (conf Config) GetFileStor() string {
-	return conf.fileStor
+func (conf Config) GetStorageType() string {
+	return conf.storageType
 }
 
-func (conf Config) GetDBStor() string {
-	return conf.dbStor
+func (conf Config) GetFileStorage() string {
+	return conf.fileStorage
+}
+
+func (conf Config) GetDBStorage() string {
+	return conf.dbStorage
 }
 
 func NewConfig() Config {
@@ -63,8 +65,8 @@ func NewConfig() Config {
 
 	flag.StringVar(&opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
 	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
-	flag.StringVar(&opt.FileStorOpt, "f", defaultFileStor, "file storage path")
-	flag.StringVar(&opt.DBStorOpt, "d", defaultDBStor, "database DSN")
+	flag.StringVar(&opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
+	flag.StringVar(&opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
 	flag.Parse()
 
 	err := env.Parse(&opt)
@@ -97,16 +99,18 @@ func NewConfig() Config {
 		}
 	}
 
-	if opt.FileStorOpt != "" {
-		res.fileStor = opt.FileStorOpt
+	if opt.FileStorageOpt != "" {
+		res.fileStorage = opt.FileStorageOpt
+		res.storageType = "file"
 	} else {
-		res.fileStor = "/dev/null"
+		res.fileStorage = "/dev/null"
 	}
 
-	if opt.DBStorOpt != "" {
-		res.dbStor = opt.DBStorOpt
+	if opt.DBStorageOpt != "" {
+		res.dbStorage = opt.DBStorageOpt
+		res.storageType = "db"
 	} else {
-		res.dbStor = "/dev/null"
+		res.dbStorage = "/dev/null"
 	}
 
 	return res

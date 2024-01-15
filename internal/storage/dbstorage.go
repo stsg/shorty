@@ -2,6 +2,14 @@ package storage
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/lib/pq"
+
 	"github.com/stsg/shorty/internal/config"
 )
 
@@ -10,18 +18,110 @@ type DBStorage struct {
 }
 
 func NewDBStorage(config config.Config) (*DBStorage, error) {
-	db, err := sql.Open("postgres", config.GetDBStor())
+	db, err := sql.Open("postgres", config.GetDBStorage())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("DB open error: %s", err)
 	}
 
-	defer db.Close()
+	if !IsTableExist(db, "urls") {
+		driver, err := postgres.WithInstance(db, &postgres.Config{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create migration driver: %s", err)
+		}
+		m, err := migrate.NewWithDatabaseInstance(
+			"file://data/db/migration",
+			"postgres", driver,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("DB migrate registration error: %s", err)
+		}
+		err = m.Up()
+		if err != nil {
+			return nil, fmt.Errorf("DB migration error: %s", err)
+		}
+	}
+
+	// defer db.Close()
 	return &DBStorage{db: db}, nil
 }
-func (s *DBStorage) IsReady() error {
-	err := s.db.Ping()
+
+func (s *DBStorage) Save(shortURL string, longURL string) error {
+	query := "INSERT INTO urls(short_url, original_url) VALUES ($1, $2)"
+	_, err := s.db.Exec(query, shortURL, longURL)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *DBStorage) GetRealURL(shortURL string) (string, error) {
+	var longURL string
+	query := "SELECT original_url FROM urls WHERE short_url = $1"
+	err := s.db.QueryRow(query, shortURL).Scan(&longURL)
+	if err != nil {
+		return "", err
+	}
+	return longURL, nil
+}
+
+func (s *DBStorage) GetShortURL(longURL string) (string, error) {
+	var shortURL string
+	query := "SELECT short_url FROM urls WHERE original_url = $1"
+	err := s.db.QueryRow(query, longURL).Scan(&shortURL)
+	if !errors.Is(err, sql.ErrNoRows) {
+		return shortURL, errors.New("short URL already exist")
+	}
+
+	shortURL = GenShortURL()
+
+	for {
+		if !s.IsShortURLExist(shortURL) {
+			err = s.Save(shortURL, longURL)
+			if err == nil {
+				return shortURL, nil
+			} else {
+				return "", err
+			}
+		}
+		shortURL = GenShortURL()
+	}
+}
+
+func (s *DBStorage) IsShortURLExist(shortURL string) bool {
+	var longURL string
+	query := "SELECT original_url FROM urls WHERE short_url = $1"
+	err := s.db.QueryRow(query, shortURL).Scan(&longURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+	return true
+}
+
+func (s *DBStorage) IsRealURLExist(longURL string) bool {
+	var shortURL string
+	query := "SELECT short_url FROM urls WHERE original_url = $1"
+	err := s.db.QueryRow(query, longURL).Scan(&shortURL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+	return true
+}
+
+func (s *DBStorage) IsReady() bool {
+	err := s.db.Ping()
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func IsTableExist(db *sql.DB, table string) bool {
+	var n int64
+	query := "SELECT 1 FROM information_schema.tables WHERE table_name = $1"
+	err := db.QueryRow(query, table).Scan(&n)
+	if err != nil {
+		return false
+	}
+
+	return true
 }
