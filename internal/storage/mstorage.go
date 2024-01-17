@@ -17,7 +17,7 @@ func NewMapStorage() (*MapStorage, error) {
 func (s *MapStorage) Save(shortURL string, longURL string) error {
 	_, exist := s.m[shortURL]
 	if exist {
-		return errors.New("short URL already exist")
+		return UniqueViolation
 	}
 	s.m[shortURL] = longURL
 	return nil
@@ -37,7 +37,7 @@ func (s *MapStorage) GetRealURL(shortURL string) (string, error) {
 func (s *MapStorage) GetShortURL(longURL string) (string, error) {
 	for sURL, lURL := range s.m {
 		if lURL == longURL {
-			return sURL, errors.New("short URL already exist: ")
+			return sURL, UniqueViolation
 		}
 	}
 	for {

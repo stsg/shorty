@@ -82,6 +82,11 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	shortURL, err := h.storage.GetShortURL(longURL)
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
+		if errors.Is(err, storage.UniqueViolation) {
+			rw.WriteHeader(http.StatusConflict)
+			rw.Write([]byte(h.config.GetBaseAddr() + "/" + shortURL))
+			return
+		}
 		rw.WriteHeader(http.StatusBadRequest)
 		rw.Write([]byte(err.Error()))
 		return
@@ -111,6 +116,12 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 	rwJSON.Result = h.config.GetBaseAddr() + "/" + rwJSON.Result
 	if err != nil {
 		rw.Header().Set("Content-Type", "application/json")
+		if errors.Is(err, storage.UniqueViolation) {
+			rw.WriteHeader(http.StatusConflict)
+			body, _ := json.Marshal(rwJSON)
+			rw.Write([]byte(body))
+			return
+		}
 		rw.WriteHeader(http.StatusBadRequest)
 		body, _ := json.Marshal(map[string]string{"error": err.Error()})
 		rw.Write([]byte(body))

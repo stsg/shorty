@@ -99,7 +99,7 @@ func (s *FileStorage) GetRealURL(shortURL string) (string, error) {
 func (s *FileStorage) GetShortURL(longURL string) (string, error) {
 	for key := range s.fm {
 		if s.fm[key].LongURL == longURL {
-			return s.fm[key].ShortURL, errors.New("short URL already exist")
+			return s.fm[key].ShortURL, UniqueViolation
 		}
 	}
 	shortURL := GenShortURL()

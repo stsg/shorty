@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/lib/pq"
 
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
 
 	"github.com/stsg/shorty/internal/config"
 )
+
+const uniqueViolation = pq.ErrorCode("23505")
 
 type DBStorage struct {
 	db *sql.DB
@@ -41,16 +43,21 @@ func NewDBStorage(config config.Config) (*DBStorage, error) {
 		}
 	}
 
-	// defer db.Close()
 	return &DBStorage{db: db}, nil
 }
 
 func (s *DBStorage) Save(shortURL string, longURL string) error {
+	var dbErr *pq.Error
+
 	query := "INSERT INTO urls(short_url, original_url) VALUES ($1, $2)"
 	_, err := s.db.Exec(query, shortURL, longURL)
 	if err != nil {
+		if errors.As(err, &dbErr) && dbErr.Code == uniqueViolation {
+			return UniqueViolation
+		}
 		return err
 	}
+
 	return nil
 }
 
@@ -69,7 +76,7 @@ func (s *DBStorage) GetShortURL(longURL string) (string, error) {
 	query := "SELECT short_url FROM urls WHERE original_url = $1"
 	err := s.db.QueryRow(query, longURL).Scan(&shortURL)
 	if !errors.Is(err, sql.ErrNoRows) {
-		return shortURL, errors.New("short URL already exist")
+		return shortURL, UniqueViolation
 	}
 
 	shortURL = GenShortURL()
