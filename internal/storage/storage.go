@@ -7,7 +7,7 @@ import (
 	"github.com/stsg/shorty/internal/config"
 )
 
-var UniqueViolation = errors.New("short URL already exist")
+var ErrUniqueViolation = errors.New("short URL already exist")
 
 type Storage interface {
 	Save(shortURL string, longURL string) error

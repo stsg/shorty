@@ -53,7 +53,7 @@ func (s *DBStorage) Save(shortURL string, longURL string) error {
 	_, err := s.db.Exec(query, shortURL, longURL)
 	if err != nil {
 		if errors.As(err, &dbErr) && dbErr.Code == uniqueViolation {
-			return UniqueViolation
+			return ErrUniqueViolation
 		}
 		return err
 	}
@@ -76,7 +76,7 @@ func (s *DBStorage) GetShortURL(longURL string) (string, error) {
 	query := "SELECT short_url FROM urls WHERE original_url = $1"
 	err := s.db.QueryRow(query, longURL).Scan(&shortURL)
 	if !errors.Is(err, sql.ErrNoRows) {
-		return shortURL, UniqueViolation
+		return shortURL, ErrUniqueViolation
 	}
 
 	shortURL = GenShortURL()
