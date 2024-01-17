@@ -44,6 +44,7 @@ func main() {
 	r.Get("/{id}", pHandle.HandleShortID)
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/shorten", pHandle.HandleShortRequestJSON)
+		r.Post("/shorten/batch", pHandle.HandleShortRequestJSONBatch)
 	})
 
 	err = http.ListenAndServe(conf.GetRunAddr(), r)

@@ -25,6 +25,16 @@ type resJSON struct {
 	Result string `json:"result"`
 }
 
+type reqJSONBatch struct {
+	ID  string `json:"correlation_id"`
+	URL string `json:"original_url,omitempty"`
+}
+
+type resJSONBatch struct {
+	ID     string `json:"correlation_id"`
+	Result string `json:"short_url,omitempty"`
+}
+
 func NewHandle(config config.Config, storage storage.Storage) Handle {
 	handle := Handle{}
 	handle.config = config
@@ -107,6 +117,40 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 	rw.Header().Set("Location", rwJSON.Result)
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	body, _ := json.Marshal(rwJSON)
+	rw.Write([]byte(body))
+}
+
+func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
+	var rqJSON []reqJSONBatch
+	var rwJSON []resJSONBatch
+
+	url, err := io.ReadAll(req.Body)
+	if err != nil {
+		panic(errors.New("cannot read request body"))
+	}
+	err = json.Unmarshal(url, &rqJSON)
+	if err != nil {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		body, _ := json.Marshal(map[string]string{"error": err.Error()})
+		rw.Write([]byte(body))
+		return
+	}
+	for _, rqElemJSON := range rqJSON {
+		shortURL, err := h.storage.GetShortURL(rqElemJSON.URL)
+		shortURL = h.config.GetBaseAddr() + "/" + shortURL
+		rwElemJSON := resJSONBatch{
+			ID:     rqElemJSON.ID,
+			Result: shortURL,
+		}
+		if err != nil {
+			rwElemJSON.Result = err.Error()
+		}
+		rwJSON = append(rwJSON, rwElemJSON)
+	}
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
 	body, _ := json.Marshal(rwJSON)
