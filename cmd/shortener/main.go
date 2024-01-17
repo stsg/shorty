@@ -31,23 +31,23 @@ func main() {
 	}
 	defer logger.Sync()
 
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(mylogger.ZapLogger(logger))
-	r.Use(pHandle.Decompress())
-	r.Use(middleware.Compress(5, "application/json", "text/html"))
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(mylogger.ZapLogger(logger))
+	router.Use(pHandle.Decompress())
+	router.Use(middleware.Compress(5, "application/json", "text/html"))
 
-	r.Post("/", pHandle.HandleShortRequest)
-	r.Get("/ping", pHandle.HandlePing)
-	r.Get("/{id}", pHandle.HandleShortID)
-	r.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", pHandle.HandleShortRequestJSON)
-		r.Post("/shorten/batch", pHandle.HandleShortRequestJSONBatch)
+	router.Post("/", pHandle.HandleShortRequest)
+	router.Get("/ping", pHandle.HandlePing)
+	router.Get("/{id}", pHandle.HandleShortID)
+	router.Route("/api", func(childRouter chi.Router) {
+		childRouter.Post("/shorten", pHandle.HandleShortRequestJSON)
+		childRouter.Post("/shorten/batch", pHandle.HandleShortRequestJSONBatch)
 	})
 
-	err = http.ListenAndServe(conf.GetRunAddr(), r)
+	err = http.ListenAndServe(conf.GetRunAddr(), router)
 	if err != nil {
 		panic(errors.New("cannot run server"))
 	}
