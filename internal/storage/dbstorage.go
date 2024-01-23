@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/lib/pq"
-
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/lib/pq"
 
 	"github.com/stsg/shorty/internal/config"
 )
@@ -61,6 +61,27 @@ func (s *DBStorage) Save(shortURL string, longURL string) error {
 	return nil
 }
 
+func (s *DBStorage) SaveNew(shortURL string, longURL string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return errors.New("cannot start transaction when saving new short URL")
+	}
+	defer tx.Rollback()
+
+	if !s.IsShortURLExist(shortURL) {
+		err = s.Save(shortURL, longURL)
+		if err == nil {
+			if err = tx.Commit(); err != nil {
+				return errors.New("cannot commit transaction when saving new short URL")
+			}
+			return nil
+		}
+		return errors.New("cannot save new short URL")
+	}
+
+	return ErrUniqueViolation
+}
+
 func (s *DBStorage) GetRealURL(shortURL string) (string, error) {
 	var longURL string
 	query := "SELECT original_url FROM urls WHERE short_url = $1"
@@ -82,13 +103,12 @@ func (s *DBStorage) GetShortURL(longURL string) (string, error) {
 	shortURL = GenShortURL()
 
 	for {
-		if !s.IsShortURLExist(shortURL) {
-			err = s.Save(shortURL, longURL)
-			if err == nil {
-				return shortURL, nil
-			} else {
-				return "", err
-			}
+		err = s.SaveNew(shortURL, longURL)
+		if err == nil {
+			return shortURL, nil
+		}
+		if !errors.Is(err, ErrUniqueViolation) {
+			return "", err
 		}
 		shortURL = GenShortURL()
 	}
