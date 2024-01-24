@@ -34,6 +34,22 @@ func (s *MapStorage) GetRealURL(shortURL string) (string, error) {
 	return longURL, nil
 }
 
+func (s *MapStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+	var rwJSON []ResJSONBatch
+	for _, rqElemJSON := range longURLs {
+		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL = bAddr + "/" + shortURL
+		rwElemJSON := ResJSONBatch{
+			ID:     rqElemJSON.ID,
+			Result: shortURL,
+		}
+		if err != nil {
+			rwElemJSON.Result = err.Error()
+		}
+		rwJSON = append(rwJSON, rwElemJSON)
+	}
+	return rwJSON, nil
+}
 func (s *MapStorage) GetShortURL(longURL string) (string, error) {
 	for sURL, lURL := range s.m {
 		if lURL == longURL {

@@ -7,12 +7,45 @@ import (
 	"github.com/stsg/shorty/internal/config"
 )
 
+type ReqJSON struct {
+	URL string `json:"url,omitempty"`
+}
+
+type ResJSON struct {
+	Result string `json:"result"`
+}
+
+type ReqJSONBatch struct {
+	ID  string `json:"correlation_id"`
+	URL string `json:"original_url,omitempty"`
+}
+
+type ResJSONBatch struct {
+	ID     string `json:"correlation_id"`
+	Result string `json:"short_url,omitempty"`
+}
+
+//	type handle struct {
+//		Config  config.Config
+//		storage Storage
+//	}
+//type reqJSONBatch struct {
+//	ID  string `json:"correlation_id"`
+//	URL string `json:"original_url,omitempty"`
+//}
+//
+//type resJSONBatch struct {
+//	ID     string `json:"correlation_id"`
+//	Result string `json:"short_url,omitempty"`
+//}
+
 var ErrUniqueViolation = errors.New("short URL already exist")
 
 type Storage interface {
 	Save(shortURL string, longURL string) error
 	GetRealURL(shortURL string) (string, error)
 	GetShortURL(longURL string) (string, error)
+	GetShortURLBatch(string, []ReqJSONBatch) ([]ResJSONBatch, error)
 	IsRealURLExist(longURL string) bool
 	IsShortURLExist(longURL string) bool
 	IsReady() bool

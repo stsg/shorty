@@ -92,6 +92,33 @@ func (s *DBStorage) GetRealURL(shortURL string) (string, error) {
 	return longURL, nil
 }
 
+func (s *DBStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+	var rwJSON []ResJSONBatch
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return rwJSON, errors.New("cannot start transaction when saving new short URL")
+	}
+	defer tx.Rollback()
+
+	for _, rqElemJSON := range longURLs {
+		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL = bAddr + "/" + shortURL
+		rwElemJSON := ResJSONBatch{
+			ID:     rqElemJSON.ID,
+			Result: shortURL,
+		}
+		if err != nil {
+			rwElemJSON.Result = err.Error()
+		}
+		rwJSON = append(rwJSON, rwElemJSON)
+	}
+	if err = tx.Commit(); err != nil {
+		return rwJSON, errors.New("cannot commit transaction when saving new short URL")
+	}
+	return rwJSON, nil
+}
+
 func (s *DBStorage) GetShortURL(longURL string) (string, error) {
 	var shortURL string
 	query := "SELECT short_url FROM urls WHERE original_url = $1"

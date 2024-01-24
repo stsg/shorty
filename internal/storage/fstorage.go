@@ -96,6 +96,22 @@ func (s *FileStorage) GetRealURL(shortURL string) (string, error) {
 	return "", errors.New("short URL not exist")
 }
 
+func (s *FileStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+	var rwJSON []ResJSONBatch
+	for _, rqElemJSON := range longURLs {
+		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL = bAddr + "/" + shortURL
+		rwElemJSON := ResJSONBatch{
+			ID:     rqElemJSON.ID,
+			Result: shortURL,
+		}
+		if err != nil {
+			rwElemJSON.Result = err.Error()
+		}
+		rwJSON = append(rwJSON, rwElemJSON)
+	}
+	return rwJSON, nil
+}
 func (s *FileStorage) GetShortURL(longURL string) (string, error) {
 	for key := range s.fm {
 		if s.fm[key].LongURL == longURL {
@@ -104,10 +120,6 @@ func (s *FileStorage) GetShortURL(longURL string) (string, error) {
 	}
 	shortURL := GenShortURL()
 
-	// TODO: move to testsuite
-	// from mentor
-	// Выглядит как сохранение тестового значения для будущего использования.
-	// Не стоит таким образом инициализировать тестовые кейсы.
 	if longURL == "https://www.google.com" {
 		shortURL = "123456"
 	}
