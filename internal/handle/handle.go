@@ -17,24 +17,6 @@ type Handle struct {
 	storage storage.Storage
 }
 
-//type ReqJSON struct {
-//	URL string `json:"url,omitempty"`
-//}
-//
-//type ResJSON struct {
-//	Result string `json:"result"`
-//}
-//
-//type ReqJSONBatch struct {
-//	ID  string `json:"correlation_id"`
-//	URL string `json:"original_url,omitempty"`
-//}
-//
-//type ResJSONBatch struct {
-//	ID     string `json:"correlation_id"`
-//	Result string `json:"short_url,omitempty"`
-//}
-
 func NewHandle(config config.Config, storage storage.Storage) Handle {
 	handle := Handle{}
 	handle.Config = config

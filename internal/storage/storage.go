@@ -25,20 +25,6 @@ type ResJSONBatch struct {
 	Result string `json:"short_url,omitempty"`
 }
 
-//	type handle struct {
-//		Config  config.Config
-//		storage Storage
-//	}
-//type reqJSONBatch struct {
-//	ID  string `json:"correlation_id"`
-//	URL string `json:"original_url,omitempty"`
-//}
-//
-//type resJSONBatch struct {
-//	ID     string `json:"correlation_id"`
-//	Result string `json:"short_url,omitempty"`
-//}
-
 var ErrUniqueViolation = errors.New("short URL already exist")
 
 type Storage interface {
