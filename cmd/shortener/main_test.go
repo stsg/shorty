@@ -69,7 +69,7 @@ func Test_getShortURL(t *testing.T) {
 			url:     "/",
 			request: "https://www.google.com",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusConflict,
 				contentType: "",
 				response:    "",
 			},
@@ -263,7 +263,7 @@ func Test_getShortURLJSON(t *testing.T) {
 				URL: "https://yandex.ru",
 			},
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusConflict,
 				contentType: "application/json",
 				response: resJSON{
 					Result: ``,
@@ -278,7 +278,7 @@ func Test_getShortURLJSON(t *testing.T) {
 				URL: "https://www.google.com",
 			},
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusConflict,
 				contentType: "application/json",
 				response: resJSON{
 					Result: ``,

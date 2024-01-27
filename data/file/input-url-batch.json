@@ -1,0 +1,14 @@
+[
+    {
+        "correlation_id": "0001",
+        "original_url": "https://kub1.aws.com"
+    },
+    {
+        "correlation_id": "0002",
+        "original_url": "https://kub2.aws.com"
+    },
+    {
+        "correlation_id": "0003",
+        "original_url": "https://kub3.aws.com"
+    }
+]

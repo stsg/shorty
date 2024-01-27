@@ -27,7 +27,7 @@ func NewFileStorage(config config.Config) (*FileStorage, error) {
 	var fMap fileMap
 
 	fs := &FileStorage{
-		Path:  config.GetFileStor(),
+		Path:  config.GetFileStorage(),
 		count: 0,
 	}
 	err := fs.Open()
@@ -96,18 +96,30 @@ func (s *FileStorage) GetRealURL(shortURL string) (string, error) {
 	return "", errors.New("short URL not exist")
 }
 
+func (s *FileStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+	var rwJSON []ResJSONBatch
+	for _, rqElemJSON := range longURLs {
+		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL = bAddr + "/" + shortURL
+		rwElemJSON := ResJSONBatch{
+			ID:     rqElemJSON.ID,
+			Result: shortURL,
+		}
+		if err != nil {
+			rwElemJSON.Result = err.Error()
+		}
+		rwJSON = append(rwJSON, rwElemJSON)
+	}
+	return rwJSON, nil
+}
 func (s *FileStorage) GetShortURL(longURL string) (string, error) {
 	for key := range s.fm {
 		if s.fm[key].LongURL == longURL {
-			return s.fm[key].ShortURL, errors.New("short URL already exist")
+			return s.fm[key].ShortURL, ErrUniqueViolation
 		}
 	}
 	shortURL := GenShortURL()
 
-	// TODO: move to testsuite
-	// from @rktkov
-	// Выглядит как сохранение тестового значения для будущего использования.
-	// Не стоит таким образом инициализировать тестовые кейсы.
 	if longURL == "https://www.google.com" {
 		shortURL = "123456"
 	}
@@ -141,4 +153,13 @@ func (s *FileStorage) IsRealURLExist(longURL string) bool {
 		}
 	}
 	return false
+}
+
+func (s *FileStorage) IsReady() bool {
+	err := s.Open()
+	if err != nil {
+		return false
+	}
+	defer s.Close()
+	return true
 }

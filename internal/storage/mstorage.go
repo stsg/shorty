@@ -10,14 +10,14 @@ type MapStorage struct {
 	m map[string]string
 }
 
-func NewMapStorage() *MapStorage {
-	return &MapStorage{m: make(map[string]string)}
+func NewMapStorage() (*MapStorage, error) {
+	return &MapStorage{m: make(map[string]string)}, nil
 }
 
-func (s MapStorage) Save(shortURL string, longURL string) error {
+func (s *MapStorage) Save(shortURL string, longURL string) error {
 	_, exist := s.m[shortURL]
 	if exist {
-		return errors.New("short URL already exist")
+		return ErrUniqueViolation
 	}
 	s.m[shortURL] = longURL
 	return nil
@@ -34,18 +34,37 @@ func (s *MapStorage) GetRealURL(shortURL string) (string, error) {
 	return longURL, nil
 }
 
+func (s *MapStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+	var rwJSON []ResJSONBatch
+	for _, rqElemJSON := range longURLs {
+		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL = bAddr + "/" + shortURL
+		rwElemJSON := ResJSONBatch{
+			ID:     rqElemJSON.ID,
+			Result: shortURL,
+		}
+		if err != nil {
+			rwElemJSON.Result = err.Error()
+		}
+		rwJSON = append(rwJSON, rwElemJSON)
+	}
+	return rwJSON, nil
+}
 func (s *MapStorage) GetShortURL(longURL string) (string, error) {
-	for surl, lurl := range s.m {
-		if lurl == longURL {
-			return surl, errors.New("short URL already exist: ")
+	for sURL, lURL := range s.m {
+		if lURL == longURL {
+			return sURL, ErrUniqueViolation
 		}
 	}
 	for {
-		surl := GenShortURL()
-		_, exist := s.m[surl]
+		sURL := GenShortURL()
+		_, exist := s.m[sURL]
 		if !exist {
-			s.Save(surl, longURL)
-			return surl, nil
+			err := s.Save(sURL, longURL)
+			if err != nil {
+				return "", err
+			}
+			return sURL, nil
 		}
 	}
 }
@@ -56,10 +75,14 @@ func (s *MapStorage) IsShortURLExist(shortURL string) bool {
 }
 
 func (s *MapStorage) IsRealURLExist(longURL string) bool {
-	for _, lurl := range s.m {
-		if lurl == longURL {
+	for _, lURL := range s.m {
+		if lURL == longURL {
 			return true
 		}
 	}
 	return false
+}
+
+func (s *MapStorage) IsReady() bool {
+	return true
 }

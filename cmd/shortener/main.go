@@ -1,16 +1,16 @@
 package main
 
-// TODO
-
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	mylogger "github.com/stsg/shorty/internal/logger"
+
 	"github.com/stsg/shorty/internal/config"
 	"github.com/stsg/shorty/internal/handle"
-	mylogger "github.com/stsg/shorty/internal/logger"
 	"github.com/stsg/shorty/internal/storage"
 
 	"go.uber.org/zap"
@@ -18,11 +18,12 @@ import (
 
 func main() {
 	conf := config.NewConfig()
-	strg, err := storage.New(conf)
+	fmt.Println("storage type:", conf.GetStorageType())
+	pStorage, err := storage.New(conf)
 	if err != nil {
 		panic(err)
 	}
-	hndl := handle.NewHandle(conf, strg)
+	pHandle := handle.NewHandle(conf, pStorage)
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -30,21 +31,23 @@ func main() {
 	}
 	defer logger.Sync()
 
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(mylogger.ZapLogger(logger))
-	r.Use(hndl.Decompress())
-	r.Use(middleware.Compress(5, "application/json", "text/html"))
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(mylogger.ZapLogger(logger))
+	router.Use(pHandle.Decompress())
+	router.Use(middleware.Compress(5, "application/json", "text/html"))
 
-	r.Post("/", hndl.HandleShortRequest)
-	r.Get("/{id}", hndl.HandleShortID)
-	r.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", hndl.HandleShortRequestJSON)
+	router.Post("/", pHandle.HandleShortRequest)
+	router.Get("/ping", pHandle.HandlePing)
+	router.Get("/{id}", pHandle.HandleShortID)
+	router.Route("/api", func(childRouter chi.Router) {
+		childRouter.Post("/shorten", pHandle.HandleShortRequestJSON)
+		childRouter.Post("/shorten/batch", pHandle.HandleShortRequestJSONBatch)
 	})
 
-	err = http.ListenAndServe(conf.GetRunAddr(), r)
+	err = http.ListenAndServe(conf.GetRunAddr(), router)
 	if err != nil {
 		panic(errors.New("cannot run server"))
 	}

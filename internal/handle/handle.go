@@ -13,30 +13,36 @@ import (
 )
 
 type Handle struct {
-	config  config.Config
+	Config  config.Config
 	storage storage.Storage
 }
 
-type reqJSON struct {
-	URL string `json:"url,omitempty"`
-}
-
-type resJSON struct {
-	Result string `json:"result"`
-}
-
 func NewHandle(config config.Config, storage storage.Storage) Handle {
-	hndl := Handle{}
-	hndl.config = config
-	hndl.storage = storage
+	handle := Handle{}
+	handle.Config = config
+	handle.storage = storage
 
-	return hndl
+	return handle
+}
+
+func (h *Handle) HandlePing(rw http.ResponseWriter, req *http.Request) {
+	ping := strings.TrimPrefix(req.URL.Path, "/")
+	ping = strings.TrimSuffix(ping, "/")
+	if !h.storage.IsReady() {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write([]byte("storage not ready"))
+		return
+	}
+	rw.Header().Set("Content-Type", "text/plain")
+	rw.WriteHeader(http.StatusOK)
+	rw.Write([]byte(ping + " - pong"))
 }
 
 func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")
-	lurl, err := h.storage.GetRealURL(id)
+	longURL, err := h.storage.GetRealURL(id)
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusNotFound)
@@ -44,9 +50,9 @@ func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 		return
 
 	}
-	rw.Header().Set("Location", lurl)
+	rw.Header().Set("Location", longURL)
 	rw.WriteHeader(http.StatusTemporaryRedirect)
-	rw.Write([]byte(lurl))
+	rw.Write([]byte(longURL))
 }
 
 func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
@@ -54,22 +60,27 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(errors.New("cannot read request body"))
 	}
-	lurl := string(url)
-	surl, err := h.storage.GetShortURL(lurl)
+	longURL := string(url)
+	shortURL, err := h.storage.GetShortURL(longURL)
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
+		if errors.Is(err, storage.ErrUniqueViolation) {
+			rw.WriteHeader(http.StatusConflict)
+			rw.Write([]byte(h.Config.GetBaseAddr() + "/" + shortURL))
+			return
+		}
 		rw.WriteHeader(http.StatusBadRequest)
 		rw.Write([]byte(err.Error()))
 		return
 	}
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
-	rw.Write([]byte(h.config.GetBaseAddr() + "/" + surl))
+	rw.Write([]byte(h.Config.GetBaseAddr() + "/" + shortURL))
 }
 
 func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
-	var rqJSON reqJSON
-	var rwJSON resJSON
+	var rqJSON storage.ReqJSON
+	var rwJSON storage.ResJSON
 
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -84,7 +95,36 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 	rwJSON.Result, err = h.storage.GetShortURL(rqJSON.URL)
-	rwJSON.Result = h.config.GetBaseAddr() + "/" + rwJSON.Result
+	rwJSON.Result = h.Config.GetBaseAddr() + "/" + rwJSON.Result
+	if err != nil {
+		rw.Header().Set("Content-Type", "application/json")
+		if errors.Is(err, storage.ErrUniqueViolation) {
+			rw.WriteHeader(http.StatusConflict)
+			body, _ := json.Marshal(rwJSON)
+			rw.Write([]byte(body))
+			return
+		}
+		rw.WriteHeader(http.StatusBadRequest)
+		body, _ := json.Marshal(map[string]string{"error": err.Error()})
+		rw.Write([]byte(body))
+		return
+	}
+	rw.Header().Set("Location", rwJSON.Result)
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	body, _ := json.Marshal(rwJSON)
+	rw.Write([]byte(body))
+}
+
+func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
+	var rqJSON []storage.ReqJSONBatch
+	//var rwJSON []ResJSONBatch
+
+	url, err := io.ReadAll(req.Body)
+	if err != nil {
+		panic(errors.New("cannot read request body"))
+	}
+	err = json.Unmarshal(url, &rqJSON)
 	if err != nil {
 		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusBadRequest)
@@ -92,7 +132,15 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 		rw.Write([]byte(body))
 		return
 	}
-	rw.Header().Set("Location", rwJSON.Result)
+
+	rwJSON, err := h.storage.GetShortURLBatch(h.Config.GetBaseAddr(), rqJSON)
+	if err != nil {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		body, _ := json.Marshal(map[string]string{"error": err.Error()})
+		rw.Write([]byte(body))
+		return
+	}
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
 	body, _ := json.Marshal(rwJSON)

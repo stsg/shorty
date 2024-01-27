@@ -12,22 +12,31 @@ import (
 
 const defaultRunAddr string = "localhost:8080"
 const defaultBaseAddr string = "http://localhost:8080"
-const defaultFileStor string = "/tmp/short-url-db.json"
+const defaultFileStorage string = "/tmp/short-url-db.json"
+
+// should be in form "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
+const defaultDBStorage string = ""
+
+//const defaultDBStorage string = ""
 
 type options struct {
-	RunAddrOpt  string `env:"SERVER_ADDRESS"`
-	BaseAddrOpt string `env:"BASE_URL"`
-	FileStorOpt string `env:"FILE_STORAGE_PATH"`
+	RunAddrOpt     string `env:"SERVER_ADDRESS"`
+	BaseAddrOpt    string `env:"BASE_URL"`
+	FileStorageOpt string `env:"FILE_STORAGE_PATH"`
+	DBStorageOpt   string `env:"DATABASE_DSN"`
 }
+
 type NetAddress struct {
 	host string
 	port int
 }
 
 type Config struct {
-	runAddr  NetAddress
-	baseAddr *url.URL
-	fileStor string
+	runAddr     NetAddress
+	baseAddr    *url.URL
+	storageType string
+	fileStorage string
+	dbStorage   string
 }
 
 func (conf Config) GetRunAddr() string {
@@ -38,8 +47,16 @@ func (conf Config) GetBaseAddr() string {
 	return conf.baseAddr.String()
 }
 
-func (conf Config) GetFileStor() string {
-	return conf.fileStor
+func (conf Config) GetStorageType() string {
+	return conf.storageType
+}
+
+func (conf Config) GetFileStorage() string {
+	return conf.fileStorage
+}
+
+func (conf Config) GetDBStorage() string {
+	return conf.dbStorage
 }
 
 func NewConfig() Config {
@@ -48,7 +65,8 @@ func NewConfig() Config {
 
 	flag.StringVar(&opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
 	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
-	flag.StringVar(&opt.FileStorOpt, "f", defaultFileStor, "file storage path")
+	flag.StringVar(&opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
+	flag.StringVar(&opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
 	flag.Parse()
 
 	err := env.Parse(&opt)
@@ -81,10 +99,19 @@ func NewConfig() Config {
 		}
 	}
 
-	if opt.FileStorOpt != "" {
-		res.fileStor = opt.FileStorOpt
+	if opt.FileStorageOpt != "" {
+		res.fileStorage = opt.FileStorageOpt
+		res.storageType = "file"
 	} else {
-		res.fileStor = "/dev/null"
+		res.fileStorage = "/dev/null"
 	}
+
+	if opt.DBStorageOpt != "" {
+		res.dbStorage = opt.DBStorageOpt
+		res.storageType = "db"
+	} else {
+		res.dbStorage = "/dev/null"
+	}
+
 	return res
 }
