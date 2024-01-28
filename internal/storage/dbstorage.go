@@ -46,11 +46,11 @@ func NewDBStorage(config config.Config) (*DBStorage, error) {
 	return &DBStorage{db: db}, nil
 }
 
-func (s *DBStorage) Save(shortURL string, longURL string) error {
+func (s *DBStorage) Save(userID uint64, shortURL string, longURL string) error {
 	var dbErr *pq.Error
 
-	query := "INSERT INTO urls(short_url, original_url) VALUES ($1, $2)"
-	_, err := s.db.Exec(query, shortURL, longURL)
+	query := "INSERT INTO urls(short_url, original_url, user_id) VALUES ($1, $2, $3)"
+	_, err := s.db.Exec(query, shortURL, longURL, userID)
 	if err != nil {
 		if errors.As(err, &dbErr) && dbErr.Code == uniqueViolation {
 			return ErrUniqueViolation
@@ -61,7 +61,7 @@ func (s *DBStorage) Save(shortURL string, longURL string) error {
 	return nil
 }
 
-func (s *DBStorage) SaveNew(shortURL string, longURL string) error {
+func (s *DBStorage) SaveNew(userID uint64, shortURL string, longURL string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return errors.New("cannot start transaction when saving new short URL")
@@ -69,7 +69,7 @@ func (s *DBStorage) SaveNew(shortURL string, longURL string) error {
 	defer tx.Rollback()
 
 	if !s.IsShortURLExist(shortURL) {
-		err = s.Save(shortURL, longURL)
+		err = s.Save(userID, shortURL, longURL)
 		if err == nil {
 			if err = tx.Commit(); err != nil {
 				return errors.New("cannot commit transaction when saving new short URL")
@@ -92,7 +92,7 @@ func (s *DBStorage) GetRealURL(shortURL string) (string, error) {
 	return longURL, nil
 }
 
-func (s *DBStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+func (s *DBStorage) GetShortURLBatch(userID uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
 	var rwJSON []ResJSONBatch
 
 	tx, err := s.db.Begin()
@@ -102,7 +102,7 @@ func (s *DBStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]R
 	defer tx.Rollback()
 
 	for _, rqElemJSON := range longURLs {
-		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL, err := s.GetShortURL(userID, rqElemJSON.URL)
 		shortURL = bAddr + "/" + shortURL
 		rwElemJSON := ResJSONBatch{
 			ID:     rqElemJSON.ID,
@@ -119,7 +119,7 @@ func (s *DBStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]R
 	return rwJSON, nil
 }
 
-func (s *DBStorage) GetShortURL(longURL string) (string, error) {
+func (s *DBStorage) GetShortURL(userID uint64, longURL string) (string, error) {
 	var shortURL string
 	query := "SELECT short_url FROM urls WHERE original_url = $1"
 	err := s.db.QueryRow(query, longURL).Scan(&shortURL)
@@ -130,7 +130,7 @@ func (s *DBStorage) GetShortURL(longURL string) (string, error) {
 	shortURL = GenShortURL()
 
 	for {
-		err = s.SaveNew(shortURL, longURL)
+		err = s.SaveNew(userID, shortURL, longURL)
 		if err == nil {
 			return shortURL, nil
 		}
@@ -165,4 +165,29 @@ func IsTableExist(db *sql.DB, table string) bool {
 	query := "SELECT 1 FROM information_schema.tables WHERE table_name = $1"
 	err := db.QueryRow(query, table).Scan(&n)
 	return err == nil
+}
+
+func (s *DBStorage) GetAllURLs(userId uint64) ([]ResJSONURL, error) {
+	var rwJSON []ResJSONURL
+	query := "SELECT short_url, original_url FROM urls WHERE user_id = $1"
+	rows, err := s.db.Query(query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var shortURL, longURL string
+		if err := rows.Scan(&shortURL, &longURL); err != nil {
+			return nil, err
+		}
+		rwJSON = append(rwJSON, ResJSONURL{
+			URL:    shortURL,
+			Result: longURL,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return rwJSON, nil
 }

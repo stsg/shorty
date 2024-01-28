@@ -21,6 +21,7 @@ type fileMap struct {
 	UUID     string `json:"uuid"`
 	ShortURL string `json:"short_url"`
 	LongURL  string `json:"original_url"`
+	UserID   uint64 `json:"user_id"`
 }
 
 func NewFileStorage(config config.Config) (*FileStorage, error) {
@@ -50,11 +51,12 @@ func NewFileStorage(config config.Config) (*FileStorage, error) {
 	return fs, nil
 }
 
-func (s *FileStorage) Save(shortURL string, longURL string) error {
+func (s *FileStorage) Save(userID uint64, shortURL string, longURL string) error {
 	var fMap = fileMap{
 		UUID:     strconv.Itoa(s.count),
 		ShortURL: shortURL,
 		LongURL:  longURL,
+		UserID:   userID,
 	}
 	s.fm = append(s.fm, fMap)
 	jsonData, err := json.Marshal(fMap)
@@ -96,10 +98,10 @@ func (s *FileStorage) GetRealURL(shortURL string) (string, error) {
 	return "", errors.New("short URL not exist")
 }
 
-func (s *FileStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+func (s *FileStorage) GetShortURLBatch(userID uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
 	var rwJSON []ResJSONBatch
 	for _, rqElemJSON := range longURLs {
-		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL, err := s.GetShortURL(userID, rqElemJSON.URL)
 		shortURL = bAddr + "/" + shortURL
 		rwElemJSON := ResJSONBatch{
 			ID:     rqElemJSON.ID,
@@ -112,7 +114,7 @@ func (s *FileStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([
 	}
 	return rwJSON, nil
 }
-func (s *FileStorage) GetShortURL(longURL string) (string, error) {
+func (s *FileStorage) GetShortURL(userID uint64, longURL string) (string, error) {
 	for key := range s.fm {
 		if s.fm[key].LongURL == longURL {
 			return s.fm[key].ShortURL, ErrUniqueViolation
@@ -126,7 +128,7 @@ func (s *FileStorage) GetShortURL(longURL string) (string, error) {
 
 	for {
 		if !s.IsShortURLExist(shortURL) {
-			err := s.Save(shortURL, longURL)
+			err := s.Save(userID, shortURL, longURL)
 			if err == nil {
 				return shortURL, nil
 			} else {
@@ -162,4 +164,17 @@ func (s *FileStorage) IsReady() bool {
 	}
 	defer s.Close()
 	return true
+}
+
+func (s *FileStorage) GetAllURLs(userId uint64) ([]ResJSONURL, error) {
+	var rwJSON []ResJSONURL
+	for key := range s.fm {
+		if s.fm[key].UserID == userId {
+			rwJSON = append(rwJSON, ResJSONURL{
+				URL:    s.fm[key].ShortURL,
+				Result: s.fm[key].LongURL,
+			})
+		}
+	}
+	return rwJSON, nil
 }

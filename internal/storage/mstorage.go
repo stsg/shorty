@@ -7,19 +7,28 @@ import (
 const ShortURLLength = 6
 
 type MapStorage struct {
-	m map[string]string
+	m map[string]UserURL
+}
+
+type UserURL struct {
+	LongURL string
+	UserID  uint64
 }
 
 func NewMapStorage() (*MapStorage, error) {
-	return &MapStorage{m: make(map[string]string)}, nil
+	return &MapStorage{m: make(map[string]UserURL)}, nil
 }
 
-func (s *MapStorage) Save(shortURL string, longURL string) error {
+func (s *MapStorage) Save(userID uint64, shortURL string, longURL string) error {
 	_, exist := s.m[shortURL]
 	if exist {
 		return ErrUniqueViolation
 	}
-	s.m[shortURL] = longURL
+	uURL := UserURL{
+		LongURL: longURL,
+		UserID:  userID,
+	}
+	s.m[shortURL] = uURL
 	return nil
 }
 
@@ -31,13 +40,13 @@ func (s *MapStorage) GetRealURL(shortURL string) (string, error) {
 	if !exist {
 		return "", errors.New("short URL not exist")
 	}
-	return longURL, nil
+	return longURL.LongURL, nil
 }
 
-func (s *MapStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+func (s *MapStorage) GetShortURLBatch(userID uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
 	var rwJSON []ResJSONBatch
 	for _, rqElemJSON := range longURLs {
-		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL, err := s.GetShortURL(userID, rqElemJSON.URL)
 		shortURL = bAddr + "/" + shortURL
 		rwElemJSON := ResJSONBatch{
 			ID:     rqElemJSON.ID,
@@ -50,9 +59,9 @@ func (s *MapStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]
 	}
 	return rwJSON, nil
 }
-func (s *MapStorage) GetShortURL(longURL string) (string, error) {
+func (s *MapStorage) GetShortURL(userID uint64, longURL string) (string, error) {
 	for sURL, lURL := range s.m {
-		if lURL == longURL {
+		if lURL.LongURL == longURL {
 			return sURL, ErrUniqueViolation
 		}
 	}
@@ -60,7 +69,7 @@ func (s *MapStorage) GetShortURL(longURL string) (string, error) {
 		sURL := GenShortURL()
 		_, exist := s.m[sURL]
 		if !exist {
-			err := s.Save(sURL, longURL)
+			err := s.Save(userID, sURL, longURL)
 			if err != nil {
 				return "", err
 			}
@@ -76,7 +85,7 @@ func (s *MapStorage) IsShortURLExist(shortURL string) bool {
 
 func (s *MapStorage) IsRealURLExist(longURL string) bool {
 	for _, lURL := range s.m {
-		if lURL == longURL {
+		if lURL.LongURL == longURL {
 			return true
 		}
 	}
@@ -85,4 +94,18 @@ func (s *MapStorage) IsRealURLExist(longURL string) bool {
 
 func (s *MapStorage) IsReady() bool {
 	return true
+}
+
+func (s *MapStorage) GetAllURLs(userId uint64) ([]ResJSONURL, error) {
+	var rwJSON []ResJSONURL
+	for sURL, lURL := range s.m {
+		if lURL.UserID == userId {
+			rwElemJSON := ResJSONURL{
+				URL:    sURL,
+				Result: lURL.LongURL,
+			}
+			rwJSON = append(rwJSON, rwElemJSON)
+		}
+	}
+	return rwJSON, nil
 }

@@ -25,13 +25,19 @@ type ResJSONBatch struct {
 	Result string `json:"short_url,omitempty"`
 }
 
+type ResJSONURL struct {
+	URL    string `json:"original_url,omitempty"`
+	Result string `json:"short_url,omitempty"`
+}
+
 var ErrUniqueViolation = errors.New("short URL already exist")
 
 type Storage interface {
-	Save(shortURL string, longURL string) error
+	Save(userId uint64, shortURL string, longURL string) error
 	GetRealURL(shortURL string) (string, error)
-	GetShortURL(longURL string) (string, error)
-	GetShortURLBatch(string, []ReqJSONBatch) ([]ResJSONBatch, error)
+	GetShortURL(userId uint64, longURL string) (string, error)
+	GetShortURLBatch(userId uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error)
+	GetAllURLs(userId uint64) ([]ResJSONURL, error)
 	IsRealURLExist(longURL string) bool
 	IsShortURLExist(longURL string) bool
 	IsReady() bool

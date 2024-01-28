@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/stsg/shorty/internal/config"
 	"github.com/stsg/shorty/internal/storage"
@@ -15,12 +18,53 @@ import (
 type Handle struct {
 	Config  config.Config
 	storage storage.Storage
+	Session *Session
+}
+
+type Session struct {
+	userSession map[string]uint64
+	count       uint64
+}
+
+func NewSession() *Session {
+	return &Session{
+		userSession: make(map[string]uint64),
+		count:       0,
+	}
+}
+
+func (s *Session) GetCount() uint64 {
+	return s.count
+}
+
+func (s *Session) AddCount() {
+	s.count++
+}
+
+func (s *Session) GetUserSession(userID string) uint64 {
+	return s.userSession[userID]
+}
+
+func (s *Session) AddUserSession() (session string, count uint64) {
+	s.AddCount()
+	session = uuid.New().String()
+	s.userSession[session] = s.count
+	return session, s.count
+}
+
+func (h *Handle) SetSession(rw http.ResponseWriter, session string) {
+	http.SetCookie(rw, &http.Cookie{
+		Name:    "token",
+		Value:   session,
+		Expires: time.Now().Add(24 * time.Hour),
+	})
 }
 
 func NewHandle(config config.Config, storage storage.Storage) Handle {
 	handle := Handle{}
 	handle.Config = config
 	handle.storage = storage
+	handle.Session = NewSession()
 
 	return handle
 }
@@ -61,7 +105,18 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 		panic(errors.New("cannot read request body"))
 	}
 	longURL := string(url)
-	shortURL, err := h.storage.GetShortURL(longURL)
+
+	userID := uint64(0)
+	session := ""
+	userIDToken, err := req.Cookie("token")
+	if err != nil {
+		userID = h.Session.GetUserSession(userIDToken.Value)
+	} else {
+		session, userID = h.Session.AddUserSession()
+		h.SetSession(rw, session)
+	}
+
+	shortURL, err := h.storage.GetShortURL(userID, longURL)
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		if errors.Is(err, storage.ErrUniqueViolation) {
@@ -94,7 +149,18 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 		rw.Write([]byte(body))
 		return
 	}
-	rwJSON.Result, err = h.storage.GetShortURL(rqJSON.URL)
+
+	userID := uint64(0)
+	session := ""
+	userIDToken, err := req.Cookie("token")
+	if err != nil {
+		userID = h.Session.GetUserSession(userIDToken.Value)
+	} else {
+		session, userID = h.Session.AddUserSession()
+		h.SetSession(rw, session)
+	}
+
+	rwJSON.Result, err = h.storage.GetShortURL(userID, rqJSON.URL)
 	rwJSON.Result = h.Config.GetBaseAddr() + "/" + rwJSON.Result
 	if err != nil {
 		rw.Header().Set("Content-Type", "application/json")
@@ -118,7 +184,6 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 
 func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON []storage.ReqJSONBatch
-	//var rwJSON []ResJSONBatch
 
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -133,7 +198,17 @@ func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.R
 		return
 	}
 
-	rwJSON, err := h.storage.GetShortURLBatch(h.Config.GetBaseAddr(), rqJSON)
+	userID := uint64(0)
+	session := ""
+	userIDToken, err := req.Cookie("token")
+	if err != nil {
+		userID = h.Session.GetUserSession(userIDToken.Value)
+	} else {
+		session, userID = h.Session.AddUserSession()
+		h.SetSession(rw, session)
+	}
+
+	rwJSON, err := h.storage.GetShortURLBatch(userID, h.Config.GetBaseAddr(), rqJSON)
 	if err != nil {
 		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusBadRequest)
@@ -174,4 +249,23 @@ func (h *Handle) Decompress() func(http.Handler) http.Handler {
 			next.ServeHTTP(rw, req)
 		})
 	}
+}
+
+func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
+	var resJSON []storage.ResJSONURL
+
+	userIDToken, err := req.Cookie("token")
+	if err != nil {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusNoContent)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+	userID := h.Session.GetUserSession(userIDToken.Value)
+	resJSON, err = h.storage.GetAllURLs(userID)
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	body, _ := json.Marshal(resJSON)
+	rw.Write([]byte(body))
 }
