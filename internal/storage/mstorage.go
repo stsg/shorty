@@ -109,3 +109,7 @@ func (s *MapStorage) GetAllURLs(userId uint64) ([]ResJSONURL, error) {
 	}
 	return rwJSON, nil
 }
+
+func (s *MapStorage) GetLastID() (int, error) {
+	return len(s.m), nil
+}

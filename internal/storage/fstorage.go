@@ -178,3 +178,12 @@ func (s *FileStorage) GetAllURLs(userId uint64) ([]ResJSONURL, error) {
 	}
 	return rwJSON, nil
 }
+
+func (s *FileStorage) GetLastID() (int, error) {
+	scanner := bufio.NewScanner(s.File)
+	count := 0
+	for scanner.Scan() {
+		count++
+	}
+	return count, nil
+}

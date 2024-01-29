@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/jwtauth"
 
 	"go.uber.org/zap"
 
@@ -16,14 +15,6 @@ import (
 	mylogger "github.com/stsg/shorty/internal/logger"
 	"github.com/stsg/shorty/internal/storage"
 )
-
-var tokenAuth *jwtauth.JWTAuth
-
-const Secret = "فارسی"
-
-func init() {
-	tokenAuth = jwtauth.New("HS256", []byte(Secret), nil)
-}
 
 func main() {
 	conf := config.NewConfig()
@@ -54,12 +45,7 @@ func main() {
 	router.Route("/api", func(childRouter chi.Router) {
 		childRouter.Post("/shorten", pHandle.HandleShortRequestJSON)
 		childRouter.Post("/shorten/batch", pHandle.HandleShortRequestJSONBatch)
-	})
-
-	router.Group(func(r chi.Router) {
-		r.Use(jwtauth.Verifier(tokenAuth))
-
-		r.Get("/user/urls", pHandle.HandleGetAllURLs)
+		childRouter.Get("/user/urls", pHandle.HandleGetAllURLs)
 	})
 
 	err = http.ListenAndServe(conf.GetRunAddr(), router)

@@ -41,6 +41,7 @@ type Storage interface {
 	IsRealURLExist(longURL string) bool
 	IsShortURLExist(longURL string) bool
 	IsReady() bool
+	GetLastID() (int, error)
 }
 
 func GenShortURL() string {

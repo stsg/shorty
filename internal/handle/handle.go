@@ -41,12 +41,12 @@ func (s *Session) AddCount() {
 	s.count++
 }
 
-func (s *Session) GetUserSession(userID string) uint64 {
-	return s.userSession[userID]
+func (s *Session) GetUserSession(sessionID string) uint64 {
+	return s.userSession[sessionID]
 }
 
 func (s *Session) AddUserSession() (session string, count uint64) {
-	s.AddCount()
+	s.count++
 	session = uuid.New().String()
 	s.userSession[session] = s.count
 	return session, s.count
@@ -104,12 +104,19 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		panic(errors.New("cannot read request body"))
 	}
+
 	longURL := string(url)
+	if longURL == "" {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write([]byte("url is empty"))
+		return
+	}
 
 	userID := uint64(0)
 	session := ""
 	userIDToken, err := req.Cookie("token")
-	if err != nil {
+	if err == nil {
 		userID = h.Session.GetUserSession(userIDToken.Value)
 	} else {
 		session, userID = h.Session.AddUserSession()
@@ -153,7 +160,7 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 	userID := uint64(0)
 	session := ""
 	userIDToken, err := req.Cookie("token")
-	if err != nil {
+	if err == nil {
 		userID = h.Session.GetUserSession(userIDToken.Value)
 	} else {
 		session, userID = h.Session.AddUserSession()
@@ -201,7 +208,7 @@ func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.R
 	userID := uint64(0)
 	session := ""
 	userIDToken, err := req.Cookie("token")
-	if err != nil {
+	if err == nil {
 		userID = h.Session.GetUserSession(userIDToken.Value)
 	} else {
 		session, userID = h.Session.AddUserSession()
@@ -263,6 +270,12 @@ func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	}
 	userID := h.Session.GetUserSession(userIDToken.Value)
 	resJSON, err = h.storage.GetAllURLs(userID)
+	if err != nil {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusNoContent)
+		rw.Write([]byte(err.Error()))
+		return
+	}
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)

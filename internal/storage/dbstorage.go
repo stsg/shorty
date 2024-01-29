@@ -49,8 +49,8 @@ func NewDBStorage(config config.Config) (*DBStorage, error) {
 func (s *DBStorage) Save(userID uint64, shortURL string, longURL string) error {
 	var dbErr *pq.Error
 
-	query := "INSERT INTO urls(short_url, original_url, user_id) VALUES ($1, $2, $3)"
-	_, err := s.db.Exec(query, shortURL, longURL, userID)
+	query := "INSERT INTO urls(short_url, original_url, user_id, deleted) VALUES ($1, $2, $3, $4)"
+	_, err := s.db.Exec(query, shortURL, longURL, userID, false)
 	if err != nil {
 		if errors.As(err, &dbErr) && dbErr.Code == uniqueViolation {
 			return ErrUniqueViolation
@@ -190,4 +190,17 @@ func (s *DBStorage) GetAllURLs(userId uint64) ([]ResJSONURL, error) {
 		return nil, err
 	}
 	return rwJSON, nil
+}
+
+func (s *DBStorage) GetLastID() (int, error) {
+	var lastID sql.NullInt64
+	query := "SELECT MAX(uuid) FROM urls"
+	err := s.db.QueryRow(query).Scan(&lastID)
+	if err != nil {
+		return 0, err
+	}
+	if !lastID.Valid {
+		return 0, nil
+	}
+	return int(lastID.Int64), nil
 }
