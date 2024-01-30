@@ -260,8 +260,9 @@ func (h *Handle) Decompress() func(http.Handler) http.Handler {
 
 func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	var resJSON []storage.ResJSONURL
+	var userID uint64
 
-	userID := uint64(0)
+	//userID := uint64(0)
 	//session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
@@ -272,8 +273,14 @@ func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte(err.Error()))
 		return
 	}
+	if userID == 0 {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusNoContent)
+		rw.Write([]byte(err.Error()))
+		return
+	}
 
-	resJSON, err = h.storage.GetAllURLs(userID)
+	resJSON, err = h.storage.GetAllURLs(userID, h.Config.GetBaseAddr())
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusInternalServerError)

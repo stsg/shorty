@@ -37,7 +37,7 @@ type Storage interface {
 	GetRealURL(shortURL string) (string, error)
 	GetShortURL(userID uint64, longURL string) (string, error)
 	GetShortURLBatch(userID uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error)
-	GetAllURLs(userID uint64) ([]ResJSONURL, error)
+	GetAllURLs(userID uint64, bAddr string) ([]ResJSONURL, error)
 	IsRealURLExist(longURL string) bool
 	IsShortURLExist(longURL string) bool
 	IsReady() bool

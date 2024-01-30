@@ -166,13 +166,13 @@ func (s *FileStorage) IsReady() bool {
 	return true
 }
 
-func (s *FileStorage) GetAllURLs(userID uint64) ([]ResJSONURL, error) {
+func (s *FileStorage) GetAllURLs(userID uint64, bAddr string) ([]ResJSONURL, error) {
 	var rwJSON []ResJSONURL
 	for key := range s.fm {
 		if s.fm[key].UserID == userID {
 			rwJSON = append(rwJSON, ResJSONURL{
-				URL:    s.fm[key].ShortURL,
-				Result: s.fm[key].LongURL,
+				URL:    s.fm[key].LongURL,
+				Result: bAddr + "/" + s.fm[key].ShortURL,
 			})
 		}
 	}

@@ -167,7 +167,7 @@ func IsTableExist(db *sql.DB, table string) bool {
 	return err == nil
 }
 
-func (s *DBStorage) GetAllURLs(userID uint64) ([]ResJSONURL, error) {
+func (s *DBStorage) GetAllURLs(userID uint64, bAddr string) ([]ResJSONURL, error) {
 	var rwJSON []ResJSONURL
 	query := "SELECT short_url, original_url FROM urls WHERE user_id = $1"
 	rows, err := s.db.Query(query, userID)
@@ -181,9 +181,10 @@ func (s *DBStorage) GetAllURLs(userID uint64) ([]ResJSONURL, error) {
 		if err := rows.Scan(&shortURL, &longURL); err != nil {
 			return nil, err
 		}
+		shortURL = bAddr + "/" + shortURL
 		rwJSON = append(rwJSON, ResJSONURL{
-			URL:    shortURL,
-			Result: longURL,
+			URL:    longURL,
+			Result: shortURL,
 		})
 	}
 	if err := rows.Err(); err != nil {
