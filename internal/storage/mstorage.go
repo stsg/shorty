@@ -96,10 +96,10 @@ func (s *MapStorage) IsReady() bool {
 	return true
 }
 
-func (s *MapStorage) GetAllURLs(userId uint64) ([]ResJSONURL, error) {
+func (s *MapStorage) GetAllURLs(userID uint64) ([]ResJSONURL, error) {
 	var rwJSON []ResJSONURL
 	for sURL, lURL := range s.m {
-		if lURL.UserID == userId {
+		if lURL.UserID == userID {
 			rwElemJSON := ResJSONURL{
 				URL:    sURL,
 				Result: lURL.LongURL,

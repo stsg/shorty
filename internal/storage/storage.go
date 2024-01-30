@@ -33,11 +33,11 @@ type ResJSONURL struct {
 var ErrUniqueViolation = errors.New("short URL already exist")
 
 type Storage interface {
-	Save(userId uint64, shortURL string, longURL string) error
+	Save(userID uint64, shortURL string, longURL string) error
 	GetRealURL(shortURL string) (string, error)
-	GetShortURL(userId uint64, longURL string) (string, error)
-	GetShortURLBatch(userId uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error)
-	GetAllURLs(userId uint64) ([]ResJSONURL, error)
+	GetShortURL(userID uint64, longURL string) (string, error)
+	GetShortURLBatch(userID uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error)
+	GetAllURLs(userID uint64) ([]ResJSONURL, error)
 	IsRealURLExist(longURL string) bool
 	IsShortURLExist(longURL string) bool
 	IsReady() bool
