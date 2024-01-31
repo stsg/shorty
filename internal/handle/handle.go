@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,34 +23,35 @@ type Handle struct {
 }
 
 type Session struct {
+	storage     storage.Storage
 	userSession map[string]uint64
-	count       uint64
+	count       *atomic.Uint64
 }
 
-func NewSession() *Session {
+func NewSession(storage storage.Storage) *Session {
+	lastID, err := storage.GetLastID()
+	if err != nil {
+		return nil
+	}
+
+	newID := atomic.Uint64{}
+	newID.Store(uint64(lastID))
 	return &Session{
+		storage:     storage,
 		userSession: make(map[string]uint64),
-		count:       0,
+		count:       &newID,
 	}
 }
 
-func (s *Session) GetCount() uint64 {
-	return s.count
-}
-
-func (s *Session) AddCount() {
-	s.count++
-}
-
-func (s *Session) GetUserSession(sessionID string) uint64 {
+func (s *Session) GetUserSessionID(sessionID string) uint64 {
 	return s.userSession[sessionID]
 }
 
 func (s *Session) AddUserSession() (session string, count uint64) {
-	s.count++
+	s.count.Add(1)
 	session = uuid.New().String()
-	s.userSession[session] = s.count
-	return session, s.count
+	s.userSession[session] = s.count.Load()
+	return session, s.count.Load()
 }
 
 func (h *Handle) SetSession(rw http.ResponseWriter, session string) {
@@ -64,7 +66,7 @@ func NewHandle(config config.Config, storage storage.Storage) Handle {
 	handle := Handle{}
 	handle.Config = config
 	handle.storage = storage
-	handle.Session = NewSession()
+	handle.Session = NewSession(storage)
 
 	return handle
 }
@@ -117,7 +119,7 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
-		userID = h.Session.GetUserSession(userIDToken.Value)
+		userID = h.Session.GetUserSessionID(userIDToken.Value)
 	} else {
 		session, userID = h.Session.AddUserSession()
 		h.SetSession(rw, session)
@@ -161,7 +163,7 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 	session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
-		userID = h.Session.GetUserSession(userIDToken.Value)
+		userID = h.Session.GetUserSessionID(userIDToken.Value)
 	} else {
 		session, userID = h.Session.AddUserSession()
 		h.SetSession(rw, session)
@@ -209,7 +211,7 @@ func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.R
 	session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
-		userID = h.Session.GetUserSession(userIDToken.Value)
+		userID = h.Session.GetUserSessionID(userIDToken.Value)
 	} else {
 		session, userID = h.Session.AddUserSession()
 		h.SetSession(rw, session)
@@ -266,14 +268,8 @@ func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	//session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
-		userID = h.Session.GetUserSession(userIDToken.Value)
+		userID = h.Session.GetUserSessionID(userIDToken.Value)
 	} else {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusNoContent)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-	if userID == 0 {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusNoContent)
 		rw.Write([]byte(err.Error()))
@@ -287,9 +283,15 @@ func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte(err.Error()))
 		return
 	}
-
+	if len(resJSON) == 0 {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusNoContent)
+		rw.Write([]byte("no content for this user"))
+		return
+	}
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
-	body, _ := json.Marshal(resJSON)
+	// body, _ := json.Marshal(resJSON)
+	body, _ := json.MarshalIndent(resJSON, "", "    ")
 	rw.Write([]byte(body))
 }

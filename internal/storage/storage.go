@@ -26,8 +26,8 @@ type ResJSONBatch struct {
 }
 
 type ResJSONURL struct {
-	URL    string `json:"original_url,omitempty"`
 	Result string `json:"short_url,omitempty"`
+	URL    string `json:"original_url,omitempty"`
 }
 
 var ErrUniqueViolation = errors.New("short URL already exist")
