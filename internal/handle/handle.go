@@ -271,7 +271,7 @@ func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 		userID = h.Session.GetUserSessionID(userIDToken.Value)
 	} else {
 		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusNoContent)
+		rw.WriteHeader(http.StatusUnauthorized)
 		rw.Write([]byte(err.Error()))
 		return
 	}
