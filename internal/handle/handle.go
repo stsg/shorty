@@ -89,7 +89,7 @@ func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")
 	longURL, err := h.storage.GetRealURL(id)
-	if errors.Is(err, storage.URLDeleted) {
+	if errors.Is(err, storage.ErrURLDeleted) {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusGone)
 		rw.Write([]byte(err.Error()))

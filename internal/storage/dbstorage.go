@@ -15,7 +15,7 @@ import (
 
 const uniqueViolation = pq.ErrorCode("23505")
 
-var URLDeleted = errors.New("URL deleted")
+var ErrURLDeleted = errors.New("URL deleted")
 
 type DBStorage struct {
 	db *sql.DB
@@ -91,7 +91,7 @@ func (s *DBStorage) GetRealURL(shortURL string) (string, error) {
 	query := "SELECT original_url, deleted FROM urls WHERE short_url = $1"
 	err := s.db.QueryRow(query, shortURL).Scan(&longURL, &deleted)
 	if deleted {
-		return "", URLDeleted
+		return "", ErrURLDeleted
 	}
 	if err != nil {
 		return "", err
