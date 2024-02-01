@@ -46,6 +46,7 @@ func main() {
 		childRouter.Post("/shorten", pHandle.HandleShortRequestJSON)
 		childRouter.Post("/shorten/batch", pHandle.HandleShortRequestJSONBatch)
 		childRouter.Get("/user/urls", pHandle.HandleGetAllURLs)
+		childRouter.Delete("/user/urls", pHandle.HandleDeleteURLs)
 	})
 
 	err = http.ListenAndServe(conf.GetRunAddr(), router)

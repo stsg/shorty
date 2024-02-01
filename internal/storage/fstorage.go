@@ -187,3 +187,8 @@ func (s *FileStorage) GetLastID() (int, error) {
 	}
 	return count, nil
 }
+
+func (s *FileStorage) DeleteURLs(userID uint64, delURLs []string) error {
+
+	return errors.New("not implemented")
+}

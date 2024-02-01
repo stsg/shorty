@@ -113,3 +113,7 @@ func (s *MapStorage) GetAllURLs(userID uint64, bAddr string) ([]ResJSONURL, erro
 func (s *MapStorage) GetLastID() (int, error) {
 	return len(s.m), nil
 }
+func (s *MapStorage) DeleteURLs(userID uint64, delURLs []string) error {
+
+	return errors.New("not implemented")
+}

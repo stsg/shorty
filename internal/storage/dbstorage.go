@@ -15,6 +15,8 @@ import (
 
 const uniqueViolation = pq.ErrorCode("23505")
 
+var URLDeleted = errors.New("URL deleted")
+
 type DBStorage struct {
 	db *sql.DB
 }
@@ -84,8 +86,13 @@ func (s *DBStorage) SaveNew(userID uint64, shortURL string, longURL string) erro
 
 func (s *DBStorage) GetRealURL(shortURL string) (string, error) {
 	var longURL string
-	query := "SELECT original_url FROM urls WHERE short_url = $1"
-	err := s.db.QueryRow(query, shortURL).Scan(&longURL)
+	var deleted bool
+
+	query := "SELECT original_url, deleted FROM urls WHERE short_url = $1"
+	err := s.db.QueryRow(query, shortURL).Scan(&longURL, &deleted)
+	if deleted {
+		return "", URLDeleted
+	}
 	if err != nil {
 		return "", err
 	}
@@ -204,4 +211,16 @@ func (s *DBStorage) GetLastID() (int, error) {
 		return 0, nil
 	}
 	return int(lastID.Int64), nil
+}
+
+func (s *DBStorage) DeleteURLs(userID uint64, delURLs []string) error {
+	for _, i := range delURLs {
+		query := "UPDATE SET deleted = true WHERE short_url = $1 and user_id = $2"
+		_, err := s.db.Exec(query, i, userID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -89,6 +89,12 @@ func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")
 	longURL, err := h.storage.GetRealURL(id)
+	if errors.Is(err, storage.URLDeleted) {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusGone)
+		rw.Write([]byte(err.Error()))
+		return
+	}
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusNotFound)
@@ -264,8 +270,6 @@ func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	var resJSON []storage.ResJSONURL
 	var userID uint64
 
-	//userID := uint64(0)
-	//session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
 		userID = h.Session.GetUserSessionID(userIDToken.Value)
@@ -294,4 +298,45 @@ func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	// body, _ := json.Marshal(resJSON)
 	body, _ := json.MarshalIndent(resJSON, "", "    ")
 	rw.Write([]byte(body))
+}
+
+func (h *Handle) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
+	var delURLs []string
+	var userID uint64
+
+	urls, err := io.ReadAll(req.Body)
+	if err != nil {
+		panic(errors.New("cannot read request body"))
+	}
+	err = json.Unmarshal(urls, &delURLs)
+	if err != nil {
+		rw.Header().Set("Content-Type", "application/text")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+
+	userIDToken, err := req.Cookie("token")
+	if err == nil {
+		userID = h.Session.GetUserSessionID(userIDToken.Value)
+	} else {
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusUnauthorized)
+		rw.Write([]byte(err.Error()))
+		return
+	}
+
+	go func() {
+		err = h.storage.DeleteURLs(userID, delURLs)
+		if err != nil {
+			rw.Header().Set("Content-Type", "application/text")
+			rw.WriteHeader(http.StatusBadRequest)
+			rw.Write([]byte(err.Error()))
+			return
+		}
+	}()
+
+	rw.Header().Set("Content-Type", "text/plain")
+	rw.WriteHeader(http.StatusAccepted)
+	rw.Write([]byte("Accepted"))
 }
