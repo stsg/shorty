@@ -215,7 +215,8 @@ func (s *DBStorage) GetLastID() (int, error) {
 
 func (s *DBStorage) DeleteURLs(userID uint64, delURLs []string) error {
 	for _, i := range delURLs {
-		query := "UPDATE SET deleted = true WHERE short_url = $1 and user_id = $2"
+		// UPDATE urls SET deleted = true WHERE short_url = 'CnhbcT' and user_id = 0;
+		query := "UPDATE urls SET deleted = true WHERE short_url = $1 and user_id = $2"
 		_, err := s.db.Exec(query, i, userID)
 		if err != nil {
 			return err
