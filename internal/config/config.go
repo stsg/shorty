@@ -17,8 +17,6 @@ const defaultFileStorage string = "/tmp/short-url-db.json"
 // should be in form "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
 const defaultDBStorage string = ""
 
-//const defaultDBStorage string = ""
-
 type options struct {
 	RunAddrOpt     string `env:"SERVER_ADDRESS"`
 	BaseAddrOpt    string `env:"BASE_URL"`

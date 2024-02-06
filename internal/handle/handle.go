@@ -62,11 +62,14 @@ func (h *Handle) SetSession(rw http.ResponseWriter, session string) {
 	})
 }
 
+// NewHandle creates a new handle object with the provided configuration and storage.
+// It returns the handle object along with a new session object.
 func NewHandle(config config.Config, storage storage.Storage) Handle {
-	handle := Handle{}
-	handle.Config = config
-	handle.storage = storage
-	handle.Session = NewSession(storage)
+	handle := Handle{
+		Config:  config,
+		storage: storage,
+		Session: NewSession(storage),
+	}
 
 	return handle
 }
@@ -108,6 +111,9 @@ func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
+	var userID uint64
+	var session string
+
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
 		panic(errors.New("cannot read request body"))
@@ -121,8 +127,6 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	userID := uint64(0)
-	session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
 		userID = h.Session.GetUserSessionID(userIDToken.Value)
@@ -151,6 +155,8 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON storage.ReqJSON
 	var rwJSON storage.ResJSON
+	var userID uint64
+	var session string
 
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -165,8 +171,6 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	userID := uint64(0)
-	session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
 		userID = h.Session.GetUserSessionID(userIDToken.Value)
@@ -199,6 +203,8 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 
 func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON []storage.ReqJSONBatch
+	var userID uint64
+	var session string
 
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -213,8 +219,6 @@ func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.R
 		return
 	}
 
-	userID := uint64(0)
-	session := ""
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
 		userID = h.Session.GetUserSessionID(userIDToken.Value)

@@ -59,7 +59,6 @@ func New(conf config.Config) (Storage, error) {
 	if conf.GetStorageType() == "file" {
 		storage, err := NewFileStorage(conf)
 		if err != nil {
-
 			return nil, errors.New("cannot create file storage")
 		}
 		return storage, nil
