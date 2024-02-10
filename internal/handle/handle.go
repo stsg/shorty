@@ -344,16 +344,6 @@ func (h *Handle) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 	}
 	userID = h.Session.GetUserSessionID(userIDToken.Value)
 
-	// go func() {
-	// 	err = h.storage.DeleteURLs(userID, delURLs)
-	// 	if err != nil {
-	// 		rw.Header().Set("Content-Type", "application/text")
-	// 		rw.WriteHeader(http.StatusBadRequest)
-	// 		rw.Write([]byte(err.Error()))
-	// 		return
-	// 	}
-	// }()
-
 	for _, url := range delURLs {
 		go func(url string, userID uint64) {
 			h.delChan <- map[string]uint64{
