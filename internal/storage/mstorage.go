@@ -114,6 +114,21 @@ func (s *MapStorage) GetLastID() (int, error) {
 	return len(s.m), nil
 }
 func (s *MapStorage) DeleteURLs(userID uint64, delURLs []string) error {
+	for _, url := range delURLs {
+		err := s.DeleteURL(map[string]uint64{url: userID})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	return errors.New("not implemented")
+func (s *MapStorage) DeleteURL(delURL map[string]uint64) error {
+	for key, value := range delURL {
+		if value != 0 {
+			delete(s.m, key)
+		}
+	}
+
+	return nil
 }

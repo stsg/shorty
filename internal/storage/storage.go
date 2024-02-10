@@ -43,6 +43,7 @@ type Storage interface {
 	IsReady() bool
 	GetLastID() (int, error)
 	DeleteURLs(userID uint64, delURLs []string) error
+	DeleteURL(delURL map[string]uint64) error
 }
 
 func GenShortURL() string {

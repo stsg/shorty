@@ -22,6 +22,7 @@ type fileMap struct {
 	ShortURL string `json:"short_url"`
 	LongURL  string `json:"original_url"`
 	UserID   uint64 `json:"user_id"`
+	Deleted  bool   `json:"deleted"`
 }
 
 func NewFileStorage(config config.Config) (*FileStorage, error) {
@@ -185,10 +186,29 @@ func (s *FileStorage) GetLastID() (int, error) {
 	for scanner.Scan() {
 		count++
 	}
+
 	return count, nil
 }
 
 func (s *FileStorage) DeleteURLs(userID uint64, delURLs []string) error {
+	for _, url := range delURLs {
+		err := s.DeleteURL(map[string]uint64{url: userID})
+		if err != nil {
+			return err
+		}
+	}
 
-	return errors.New("not implemented")
+	return nil
+}
+
+func (s *FileStorage) DeleteURL(delURL map[string]uint64) error {
+	for sURL, userID := range delURL {
+		for key := range s.fm {
+			if sURL == s.fm[key].ShortURL && userID == s.fm[key].UserID {
+				s.fm[key].Deleted = true
+			}
+		}
+	}
+
+	return nil
 }

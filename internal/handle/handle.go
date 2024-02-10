@@ -20,6 +20,7 @@ type Handle struct {
 	Config  config.Config
 	storage storage.Storage
 	Session *Session
+	delChan chan map[string]uint64
 }
 
 type Session struct {
@@ -69,7 +70,17 @@ func NewHandle(config config.Config, storage storage.Storage) Handle {
 		Config:  config,
 		storage: storage,
 		Session: NewSession(storage),
+		delChan: make(chan map[string]uint64, 500),
 	}
+
+	go func() {
+		for delURL := range handle.delChan {
+			err := storage.DeleteURL(delURL)
+			if err != nil {
+				continue
+			}
+		}
+	}()
 
 	return handle
 }
@@ -310,7 +321,10 @@ func (h *Handle) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 
 	urls, err := io.ReadAll(req.Body)
 	if err != nil {
-		panic(errors.New("cannot read request body"))
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write([]byte(err.Error()))
+		return
 	}
 	err = json.Unmarshal(urls, &delURLs)
 	if err != nil {
@@ -321,24 +335,33 @@ func (h *Handle) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	userIDToken, err := req.Cookie("token")
-	if err == nil {
-		userID = h.Session.GetUserSessionID(userIDToken.Value)
-	} else {
+	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusUnauthorized)
 		rw.Write([]byte(err.Error()))
 		return
-	}
 
-	go func() {
-		err = h.storage.DeleteURLs(userID, delURLs)
-		if err != nil {
-			rw.Header().Set("Content-Type", "application/text")
-			rw.WriteHeader(http.StatusBadRequest)
-			rw.Write([]byte(err.Error()))
-			return
-		}
-	}()
+	}
+	userID = h.Session.GetUserSessionID(userIDToken.Value)
+
+	// go func() {
+	// 	err = h.storage.DeleteURLs(userID, delURLs)
+	// 	if err != nil {
+	// 		rw.Header().Set("Content-Type", "application/text")
+	// 		rw.WriteHeader(http.StatusBadRequest)
+	// 		rw.Write([]byte(err.Error()))
+	// 		return
+	// 	}
+	// }()
+
+	for _, url := range delURLs {
+		go func(url string, userID uint64) {
+			h.delChan <- map[string]uint64{
+				url: userID,
+			}
+		}(url, userID)
+
+	}
 
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusAccepted)
