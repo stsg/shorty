@@ -7,13 +7,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	mylogger "github.com/stsg/shorty/internal/logger"
+
+	"go.uber.org/zap"
 
 	"github.com/stsg/shorty/internal/config"
 	"github.com/stsg/shorty/internal/handle"
+	mylogger "github.com/stsg/shorty/internal/logger"
 	"github.com/stsg/shorty/internal/storage"
-
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -45,6 +45,8 @@ func main() {
 	router.Route("/api", func(childRouter chi.Router) {
 		childRouter.Post("/shorten", pHandle.HandleShortRequestJSON)
 		childRouter.Post("/shorten/batch", pHandle.HandleShortRequestJSONBatch)
+		childRouter.Get("/user/urls", pHandle.HandleGetAllURLs)
+		childRouter.Delete("/user/urls", pHandle.HandleDeleteURLs)
 	})
 
 	err = http.ListenAndServe(conf.GetRunAddr(), router)

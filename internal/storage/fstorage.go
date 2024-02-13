@@ -21,6 +21,8 @@ type fileMap struct {
 	UUID     string `json:"uuid"`
 	ShortURL string `json:"short_url"`
 	LongURL  string `json:"original_url"`
+	UserID   uint64 `json:"user_id"`
+	Deleted  bool   `json:"deleted"`
 }
 
 func NewFileStorage(config config.Config) (*FileStorage, error) {
@@ -50,11 +52,12 @@ func NewFileStorage(config config.Config) (*FileStorage, error) {
 	return fs, nil
 }
 
-func (s *FileStorage) Save(shortURL string, longURL string) error {
+func (s *FileStorage) Save(userID uint64, shortURL string, longURL string) error {
 	var fMap = fileMap{
 		UUID:     strconv.Itoa(s.count),
 		ShortURL: shortURL,
 		LongURL:  longURL,
+		UserID:   userID,
 	}
 	s.fm = append(s.fm, fMap)
 	jsonData, err := json.Marshal(fMap)
@@ -96,10 +99,10 @@ func (s *FileStorage) GetRealURL(shortURL string) (string, error) {
 	return "", errors.New("short URL not exist")
 }
 
-func (s *FileStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
+func (s *FileStorage) GetShortURLBatch(userID uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
 	var rwJSON []ResJSONBatch
 	for _, rqElemJSON := range longURLs {
-		shortURL, err := s.GetShortURL(rqElemJSON.URL)
+		shortURL, err := s.GetShortURL(userID, rqElemJSON.URL)
 		shortURL = bAddr + "/" + shortURL
 		rwElemJSON := ResJSONBatch{
 			ID:     rqElemJSON.ID,
@@ -112,7 +115,7 @@ func (s *FileStorage) GetShortURLBatch(bAddr string, longURLs []ReqJSONBatch) ([
 	}
 	return rwJSON, nil
 }
-func (s *FileStorage) GetShortURL(longURL string) (string, error) {
+func (s *FileStorage) GetShortURL(userID uint64, longURL string) (string, error) {
 	for key := range s.fm {
 		if s.fm[key].LongURL == longURL {
 			return s.fm[key].ShortURL, ErrUniqueViolation
@@ -126,7 +129,7 @@ func (s *FileStorage) GetShortURL(longURL string) (string, error) {
 
 	for {
 		if !s.IsShortURLExist(shortURL) {
-			err := s.Save(shortURL, longURL)
+			err := s.Save(userID, shortURL, longURL)
 			if err == nil {
 				return shortURL, nil
 			} else {
@@ -162,4 +165,50 @@ func (s *FileStorage) IsReady() bool {
 	}
 	defer s.Close()
 	return true
+}
+
+func (s *FileStorage) GetAllURLs(userID uint64, bAddr string) ([]ResJSONURL, error) {
+	var rwJSON []ResJSONURL
+	for key := range s.fm {
+		if s.fm[key].UserID == userID {
+			rwJSON = append(rwJSON, ResJSONURL{
+				URL:    s.fm[key].LongURL,
+				Result: bAddr + "/" + s.fm[key].ShortURL,
+			})
+		}
+	}
+	return rwJSON, nil
+}
+
+func (s *FileStorage) GetLastID() (int, error) {
+	scanner := bufio.NewScanner(s.File)
+	count := 0
+	for scanner.Scan() {
+		count++
+	}
+
+	return count, nil
+}
+
+func (s *FileStorage) DeleteURLs(userID uint64, delURLs []string) error {
+	for _, url := range delURLs {
+		err := s.DeleteURL(map[string]uint64{url: userID})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *FileStorage) DeleteURL(delURL map[string]uint64) error {
+	for sURL, userID := range delURL {
+		for key := range s.fm {
+			if sURL == s.fm[key].ShortURL && userID == s.fm[key].UserID {
+				s.fm[key].Deleted = true
+			}
+		}
+	}
+
+	return nil
 }
