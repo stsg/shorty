@@ -13,6 +13,12 @@ build: info
 	cd cmd/shortener && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.revision=$(REV) -s -w" -o shortener
 	# go build -o cmd/shortener/shortener cmd/shortener/*.go
 
+tidy:
+	@ echo
+	@ echo "Tidying"
+	@ echo
+	go mod tidy
+
 clean:
 	@ echo
 	@ echo "Cleaning"
@@ -25,4 +31,10 @@ test: build
 	@ echo
 	shortenertest -test.v -test.run=^TestIteration1\$$ -binary-path=cmd/shortener/shortener
 
-PHONY: all build test clean
+run:
+	@ echo
+	@ echo "Runnig"
+	@ echo
+	go run cmd/shortener/main.go -d "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
+
+PHONY: *

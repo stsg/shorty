@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -38,6 +39,8 @@ func main() {
 	router.Use(mylogger.ZapLogger(logger))
 	router.Use(pHandle.Decompress())
 	router.Use(middleware.Compress(5, "application/json", "text/html"))
+
+	router.Mount("/debug", middleware.Profiler())
 
 	router.Post("/", pHandle.HandleShortRequest)
 	router.Get("/ping", pHandle.HandlePing)
