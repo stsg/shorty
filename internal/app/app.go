@@ -39,12 +39,17 @@ type App struct {
 	delChan chan map[string]uint64
 }
 
+// Session is a struct that holds user session data.
 type Session struct {
 	storage     storage.Storage
 	userSession map[string]uint64
 	count       *atomic.Uint64
 }
 
+// Run runs the App.
+//
+// It initializes the logger and router, sets up middleware, mounts routes, and starts the server.
+// It returns an error if there is any issue running the server.
 func (app *App) Run() error {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -131,7 +136,7 @@ func (s *Session) AddUserSession() (session string, count uint64) {
 // SetSession sets a session for the Handle.
 //
 // It takes the http.ResponseWriter and session string as parameters and does not return anything.
-func (h *App) SetSession(rw http.ResponseWriter, session string) {
+func (app *App) SetSession(rw http.ResponseWriter, session string) {
 	http.SetCookie(rw, &http.Cookie{
 		Name:    "token",
 		Value:   session,
@@ -165,10 +170,10 @@ func NewApp(config config.Config, storage storage.Storage) App {
 //
 // It takes in the http.ResponseWriter and *http.Request as parameters.
 // It does not return any values.
-func (h *App) HandlePing(rw http.ResponseWriter, req *http.Request) {
+func (app *App) HandlePing(rw http.ResponseWriter, req *http.Request) {
 	ping := strings.TrimPrefix(req.URL.Path, "/")
 	ping = strings.TrimSuffix(ping, "/")
-	if !h.storage.IsReady() {
+	if !app.storage.IsReady() {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusInternalServerError)
 		rw.Write([]byte("storage not ready"))
@@ -186,10 +191,10 @@ func (h *App) HandlePing(rw http.ResponseWriter, req *http.Request) {
 // - req: *http.Request - the HTTP request object containing the URL path.
 //
 // Returns: None.
-func (h *App) HandleShortID(rw http.ResponseWriter, req *http.Request) {
+func (app *App) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")
-	longURL, err := h.storage.GetRealURL(id)
+	longURL, err := app.storage.GetRealURL(id)
 	if errors.Is(err, storage.ErrURLDeleted) {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusGone)
@@ -208,7 +213,7 @@ func (h *App) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(longURL))
 }
 
-func (h *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
+func (app *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	var userID uint64
 	var session string
 
@@ -227,18 +232,18 @@ func (h *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
-		userID = h.Session.GetUserSessionID(userIDToken.Value)
+		userID = app.Session.GetUserSessionID(userIDToken.Value)
 	} else {
-		session, userID = h.Session.AddUserSession()
-		h.SetSession(rw, session)
+		session, userID = app.Session.AddUserSession()
+		app.SetSession(rw, session)
 	}
 
-	shortURL, err := h.storage.GetShortURL(userID, longURL)
+	shortURL, err := app.storage.GetShortURL(userID, longURL)
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		if errors.Is(err, storage.ErrUniqueViolation) {
 			rw.WriteHeader(http.StatusConflict)
-			rw.Write([]byte(h.Config.GetBaseAddr() + "/" + shortURL))
+			rw.Write([]byte(app.Config.GetBaseAddr() + "/" + shortURL))
 			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
@@ -247,10 +252,10 @@ func (h *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	}
 	rw.Header().Set("Content-Type", "text/plain")
 	rw.WriteHeader(http.StatusCreated)
-	rw.Write([]byte(h.Config.GetBaseAddr() + "/" + shortURL))
+	rw.Write([]byte(app.Config.GetBaseAddr() + "/" + shortURL))
 }
 
-func (h *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
+func (app *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON storage.ReqJSON
 	var rwJSON storage.ResJSON
 	var userID uint64
@@ -271,14 +276,14 @@ func (h *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) 
 
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
-		userID = h.Session.GetUserSessionID(userIDToken.Value)
+		userID = app.Session.GetUserSessionID(userIDToken.Value)
 	} else {
-		session, userID = h.Session.AddUserSession()
-		h.SetSession(rw, session)
+		session, userID = app.Session.AddUserSession()
+		app.SetSession(rw, session)
 	}
 
-	rwJSON.Result, err = h.storage.GetShortURL(userID, rqJSON.URL)
-	rwJSON.Result = h.Config.GetBaseAddr() + "/" + rwJSON.Result
+	rwJSON.Result, err = app.storage.GetShortURL(userID, rqJSON.URL)
+	rwJSON.Result = app.Config.GetBaseAddr() + "/" + rwJSON.Result
 	if err != nil {
 		rw.Header().Set("Content-Type", "application/json")
 		if errors.Is(err, storage.ErrUniqueViolation) {
@@ -299,7 +304,7 @@ func (h *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) 
 	rw.Write([]byte(body))
 }
 
-func (h *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
+func (app *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON []storage.ReqJSONBatch
 	var userID uint64
 	var session string
@@ -319,13 +324,13 @@ func (h *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Requ
 
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
-		userID = h.Session.GetUserSessionID(userIDToken.Value)
+		userID = app.Session.GetUserSessionID(userIDToken.Value)
 	} else {
-		session, userID = h.Session.AddUserSession()
-		h.SetSession(rw, session)
+		session, userID = app.Session.AddUserSession()
+		app.SetSession(rw, session)
 	}
 
-	rwJSON, err := h.storage.GetShortURLBatch(userID, h.Config.GetBaseAddr(), rqJSON)
+	rwJSON, err := app.storage.GetShortURLBatch(userID, app.Config.GetBaseAddr(), rqJSON)
 	if err != nil {
 		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusBadRequest)
@@ -339,7 +344,7 @@ func (h *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Requ
 	rw.Write([]byte(body))
 }
 
-func (h *App) Decompress() func(http.Handler) http.Handler {
+func (app *App) Decompress() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.Header.Get("Content-Encoding") == "gzip" {
@@ -368,13 +373,13 @@ func (h *App) Decompress() func(http.Handler) http.Handler {
 	}
 }
 
-func (h *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
+func (app *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	var resJSON []storage.ResJSONURL
 	var userID uint64
 
 	userIDToken, err := req.Cookie("token")
 	if err == nil {
-		userID = h.Session.GetUserSessionID(userIDToken.Value)
+		userID = app.Session.GetUserSessionID(userIDToken.Value)
 	} else {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusUnauthorized)
@@ -382,7 +387,7 @@ func (h *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	resJSON, err = h.storage.GetAllURLs(userID, h.Config.GetBaseAddr())
+	resJSON, err = app.storage.GetAllURLs(userID, app.Config.GetBaseAddr())
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -402,7 +407,7 @@ func (h *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(body))
 }
 
-func (h *App) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
+func (app *App) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 	var delURLs []string
 	var userID uint64
 
@@ -429,11 +434,11 @@ func (h *App) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 		return
 
 	}
-	userID = h.Session.GetUserSessionID(userIDToken.Value)
+	userID = app.Session.GetUserSessionID(userIDToken.Value)
 
 	for _, url := range delURLs {
 		go func(url string, userID uint64) {
-			h.delChan <- map[string]uint64{
+			app.delChan <- map[string]uint64{
 				url: userID,
 			}
 		}(url, userID)

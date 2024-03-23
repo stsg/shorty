@@ -12,7 +12,7 @@ import (
 )
 
 // ExampleHandlePing is a function that shows HandlePing usage.
-func (h *App) ExampleHandlePing() {
+func (app *App) ExampleHandlePing() {
 	conf := config.NewConfig()
 	fmt.Println("storage type:", conf.GetStorageType())
 	pStorage, err := storage.New(conf)
