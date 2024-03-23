@@ -29,6 +29,17 @@ type Session struct {
 	count       *atomic.Uint64
 }
 
+// NewSession creates a new session with the given storage.
+//
+// It retrieves the last ID from the storage and initializes a new atomic ID
+// with that value. It then creates and returns a new Session object with the
+// provided storage, an empty user session map, and the initialized atomic ID.
+//
+// Parameters:
+// - storage: The storage to be used for the session.
+//
+// Returns:
+// - *Session: A pointer to the newly created session.
 func NewSession(storage storage.Storage) *Session {
 	lastID, err := storage.GetLastID()
 	if err != nil {
@@ -44,10 +55,21 @@ func NewSession(storage storage.Storage) *Session {
 	}
 }
 
+// GetUserSessionID returns the user session ID associated with the given session ID.
+//
+// Parameters:
+// - sessionID: The ID of the session.
+//
+// Returns:
+// - uint64: The user session ID.
 func (s *Session) GetUserSessionID(sessionID string) uint64 {
 	return s.userSession[sessionID]
 }
 
+// AddUserSession adds a new user session to the Session struct.
+//
+// No parameters.
+// Returns a string representing the session and a uint64 representing the count.
 func (s *Session) AddUserSession() (session string, count uint64) {
 	s.count.Add(1)
 	session = uuid.New().String()
@@ -55,6 +77,9 @@ func (s *Session) AddUserSession() (session string, count uint64) {
 	return session, s.count.Load()
 }
 
+// SetSession sets a session for the Handle.
+//
+// It takes the http.ResponseWriter and session string as parameters and does not return anything.
 func (h *Handle) SetSession(rw http.ResponseWriter, session string) {
 	http.SetCookie(rw, &http.Cookie{
 		Name:    "token",
@@ -85,6 +110,10 @@ func NewHandle(config config.Config, storage storage.Storage) Handle {
 	return handle
 }
 
+// HandlePing handles the ping request.
+//
+// It takes in the http.ResponseWriter and *http.Request as parameters.
+// It does not return any values.
 func (h *Handle) HandlePing(rw http.ResponseWriter, req *http.Request) {
 	ping := strings.TrimPrefix(req.URL.Path, "/")
 	ping = strings.TrimSuffix(ping, "/")
@@ -99,6 +128,13 @@ func (h *Handle) HandlePing(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(ping + " - pong"))
 }
 
+// HandleShortID handles the shortened URL request and redirects the client to the corresponding long URL.
+//
+// Parameters:
+// - rw: http.ResponseWriter - the response writer used to write the response.
+// - req: *http.Request - the HTTP request object containing the URL path.
+//
+// Returns: None.
 func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")
