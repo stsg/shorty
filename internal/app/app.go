@@ -213,6 +213,9 @@ func (app *App) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(longURL))
 }
 
+// HandleShortRequest handles the short URL request and generates a short URL for the given long URL.
+//
+// The parameters are rw for http.ResponseWriter and req for http.Request. It does not return anything.
 func (app *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	var userID uint64
 	var session string
@@ -255,6 +258,11 @@ func (app *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(app.Config.GetBaseAddr() + "/" + shortURL))
 }
 
+// HandleShortRequestJSON handles short request JSON and generates a short URL.
+//
+// Parameters:
+// - rw: http.ResponseWriter for writing response.
+// - req: *http.Request for incoming request.
 func (app *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON storage.ReqJSON
 	var rwJSON storage.ResJSON
@@ -304,6 +312,12 @@ func (app *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request
 	rw.Write([]byte(body))
 }
 
+// HandleShortRequestJSONBatch handles a JSON batch request and processes it accordingly.
+//
+// Parameters:
+//
+//	rw http.ResponseWriter - the http response writer for sending responses.
+//	req *http.Request - the http request containing the JSON batch.
 func (app *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON []storage.ReqJSONBatch
 	var userID uint64
@@ -344,6 +358,9 @@ func (app *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Re
 	rw.Write([]byte(body))
 }
 
+// Decompress returns a middleware that decompresses request bodies if they are gzipped.
+//
+// It takes an http.Handler as a parameter and returns an http.Handler.
 func (app *App) Decompress() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -373,6 +390,10 @@ func (app *App) Decompress() func(http.Handler) http.Handler {
 	}
 }
 
+// HandleGetAllURLs handles the GET request to retrieve all URLs for a user.
+//
+// It takes in the http.ResponseWriter and http.Request as parameters.
+// It does not return any value.
 func (app *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	var resJSON []storage.ResJSONURL
 	var userID uint64
@@ -407,6 +428,11 @@ func (app *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(body))
 }
 
+// HandleDeleteURLs handles the deletion of URLs.
+//
+// It takes in an http.ResponseWriter and an http.Request as parameters.
+// The function reads the request body to get the URLs to be deleted.
+// If there is an error reading the request body, it sets the response header to "text/plain" and writes the error message with a status code of http.StatusInternal
 func (app *App) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 	var delURLs []string
 	var userID uint64

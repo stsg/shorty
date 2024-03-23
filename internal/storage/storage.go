@@ -35,6 +35,7 @@ type ResJSONURL struct {
 	URL    string `json:"original_url,omitempty"`
 }
 
+// ErrUniqueViolation is an error that is returned when a short URL already exist.
 var ErrUniqueViolation = errors.New("short URL already exist")
 
 // This class definition represents a storage interface in Go. Here's a list explaining what each method does:

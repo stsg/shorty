@@ -15,6 +15,7 @@ import (
 
 const uniqueViolation = pq.ErrorCode("23505")
 
+// URLDeleted error is returned when a URL is deleted.
 var ErrURLDeleted = errors.New("URL deleted")
 
 // DBStorage is a struct that holds DB storage data.
