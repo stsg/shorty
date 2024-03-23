@@ -1,9 +1,10 @@
-package handle
+package app
 
 import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -14,9 +15,24 @@ import (
 
 	"github.com/stsg/shorty/internal/config"
 	"github.com/stsg/shorty/internal/storage"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
+	"go.uber.org/zap"
+
+	mylogger "github.com/stsg/shorty/internal/logger"
 )
 
-type Handle struct {
+// This class definition defines a struct named App with the following fields:
+//
+// Config of type config.Config
+// storage of type storage.Storage
+// Session of type *Session (pointer to Session)
+// delChan of type chan map[string]uint64 (channel of map[string]uint64)
+//
+// App holds main application
+type App struct {
 	Config  config.Config
 	storage storage.Storage
 	Session *Session
@@ -27,6 +43,41 @@ type Session struct {
 	storage     storage.Storage
 	userSession map[string]uint64
 	count       *atomic.Uint64
+}
+
+func (app *App) Run() error {
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(errors.New("cannot create logger"))
+	}
+	defer logger.Sync()
+
+	router := chi.NewRouter()
+
+	router.Use(middleware.RequestID)
+	router.Use(middleware.RealIP)
+	router.Use(mylogger.ZapLogger(logger))
+	router.Use(app.Decompress())
+	router.Use(middleware.Compress(5, "application/json", "text/html"))
+
+	router.Mount("/debug", middleware.Profiler())
+
+	router.Post("/", app.HandleShortRequest)
+	router.Get("/ping", app.HandlePing)
+	router.Get("/{id}", app.HandleShortID)
+	router.Route("/api", func(childRouter chi.Router) {
+		childRouter.Post("/shorten", app.HandleShortRequestJSON)
+		childRouter.Post("/shorten/batch", app.HandleShortRequestJSONBatch)
+		childRouter.Get("/user/urls", app.HandleGetAllURLs)
+		childRouter.Delete("/user/urls", app.HandleDeleteURLs)
+	})
+
+	err = http.ListenAndServe(app.Config.GetRunAddr(), router)
+	if err != nil {
+		panic(fmt.Errorf("cannot run server: %v", err))
+	}
+
+	return err
 }
 
 // NewSession creates a new session with the given storage.
@@ -80,7 +131,7 @@ func (s *Session) AddUserSession() (session string, count uint64) {
 // SetSession sets a session for the Handle.
 //
 // It takes the http.ResponseWriter and session string as parameters and does not return anything.
-func (h *Handle) SetSession(rw http.ResponseWriter, session string) {
+func (h *App) SetSession(rw http.ResponseWriter, session string) {
 	http.SetCookie(rw, &http.Cookie{
 		Name:    "token",
 		Value:   session,
@@ -88,10 +139,10 @@ func (h *Handle) SetSession(rw http.ResponseWriter, session string) {
 	})
 }
 
-// NewHandle creates a new handle object with the provided configuration and storage.
+// NewApp creates a new handle object with the provided configuration and storage.
 // It returns the handle object along with a new session object.
-func NewHandle(config config.Config, storage storage.Storage) Handle {
-	handle := Handle{
+func NewApp(config config.Config, storage storage.Storage) App {
+	app := App{
 		Config:  config,
 		storage: storage,
 		Session: NewSession(storage),
@@ -99,7 +150,7 @@ func NewHandle(config config.Config, storage storage.Storage) Handle {
 	}
 
 	go func() {
-		for delURL := range handle.delChan {
+		for delURL := range app.delChan {
 			err := storage.DeleteURL(delURL)
 			if err != nil {
 				continue
@@ -107,14 +158,14 @@ func NewHandle(config config.Config, storage storage.Storage) Handle {
 		}
 	}()
 
-	return handle
+	return app
 }
 
 // HandlePing handles the ping request.
 //
 // It takes in the http.ResponseWriter and *http.Request as parameters.
 // It does not return any values.
-func (h *Handle) HandlePing(rw http.ResponseWriter, req *http.Request) {
+func (h *App) HandlePing(rw http.ResponseWriter, req *http.Request) {
 	ping := strings.TrimPrefix(req.URL.Path, "/")
 	ping = strings.TrimSuffix(ping, "/")
 	if !h.storage.IsReady() {
@@ -135,7 +186,7 @@ func (h *Handle) HandlePing(rw http.ResponseWriter, req *http.Request) {
 // - req: *http.Request - the HTTP request object containing the URL path.
 //
 // Returns: None.
-func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
+func (h *App) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	id := strings.TrimPrefix(req.URL.Path, "/")
 	id = strings.TrimSuffix(id, "/")
 	longURL, err := h.storage.GetRealURL(id)
@@ -157,7 +208,7 @@ func (h *Handle) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(longURL))
 }
 
-func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
+func (h *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	var userID uint64
 	var session string
 
@@ -199,7 +250,7 @@ func (h *Handle) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(h.Config.GetBaseAddr() + "/" + shortURL))
 }
 
-func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
+func (h *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON storage.ReqJSON
 	var rwJSON storage.ResJSON
 	var userID uint64
@@ -248,7 +299,7 @@ func (h *Handle) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Reques
 	rw.Write([]byte(body))
 }
 
-func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
+func (h *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
 	var rqJSON []storage.ReqJSONBatch
 	var userID uint64
 	var session string
@@ -288,7 +339,7 @@ func (h *Handle) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.R
 	rw.Write([]byte(body))
 }
 
-func (h *Handle) Decompress() func(http.Handler) http.Handler {
+func (h *App) Decompress() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if req.Header.Get("Content-Encoding") == "gzip" {
@@ -317,7 +368,7 @@ func (h *Handle) Decompress() func(http.Handler) http.Handler {
 	}
 }
 
-func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
+func (h *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	var resJSON []storage.ResJSONURL
 	var userID uint64
 
@@ -351,7 +402,7 @@ func (h *Handle) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte(body))
 }
 
-func (h *Handle) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
+func (h *App) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 	var delURLs []string
 	var userID uint64
 

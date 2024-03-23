@@ -25,6 +25,12 @@ clean:
 	@ echo
 	rm cmd/shortener/shortener
 
+utest: build
+	@ echo
+	@ echo "Unit testing"
+	@ echo
+	go test ./...
+
 test: build
 	@ echo
 	@ echo "Testing"

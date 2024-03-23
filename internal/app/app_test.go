@@ -1,4 +1,4 @@
-package handle
+package app
 
 import (
 	"errors"
@@ -12,14 +12,14 @@ import (
 )
 
 // ExampleHandlePing is a function that shows HandlePing usage.
-func (h *Handle) ExampleHandlePing() {
+func (h *App) ExampleHandlePing() {
 	conf := config.NewConfig()
 	fmt.Println("storage type:", conf.GetStorageType())
 	pStorage, err := storage.New(conf)
 	if err != nil {
 		panic(err)
 	}
-	pHandle := NewHandle(conf, pStorage)
+	pHandle := NewApp(conf, pStorage)
 
 	router := chi.NewRouter()
 
