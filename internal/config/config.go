@@ -17,17 +17,19 @@ const defaultFileStorage string = "/tmp/short-url-db.json"
 // should be in form "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
 const defaultDBStorage string = ""
 
-// This class definition defines a struct holds options
+// This class definition defines a struct holds Options
 // with four fields: RunAddrOpt, BaseAddrOpt, FileStorageOpt, and DBStorageOpt.
 // Each field is tagged with an env tag,
 // which specifies the name of the environment variable
 // that should be used to set the value of that field.
-type options struct {
+type Options struct {
 	RunAddrOpt     string `env:"SERVER_ADDRESS"`
 	BaseAddrOpt    string `env:"BASE_URL"`
 	FileStorageOpt string `env:"FILE_STORAGE_PATH"`
 	DBStorageOpt   string `env:"DATABASE_DSN"`
 }
+
+var opt Options
 
 // NetAddress is a struct that holds URL host and port
 type NetAddress struct {
@@ -37,6 +39,7 @@ type NetAddress struct {
 
 // Application configuration
 type Config struct {
+	// opt         Options
 	runAddr     NetAddress
 	baseAddr    *url.URL
 	storageType string
@@ -115,12 +118,12 @@ func (conf Config) GetDBStorage() string {
 // The function returns the created Config object.
 func NewConfig() Config {
 	res := Config{}
-	opt := options{}
+	// opt := Options{}
 
-	flag.StringVar(&opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
-	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
-	flag.StringVar(&opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
-	flag.StringVar(&opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
+	// flag.StringVar(&res.opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
+	// flag.StringVar(&res.opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
+	// flag.StringVar(&res.opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
+	// flag.StringVar(&res.opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
 	flag.Parse()
 
 	err := env.Parse(&opt)
@@ -168,4 +171,11 @@ func NewConfig() Config {
 	}
 
 	return res
+}
+func init() {
+	flag.StringVar(&opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
+	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
+	flag.StringVar(&opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
+	flag.StringVar(&opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
+	// fmt.Println("config.init()")
 }

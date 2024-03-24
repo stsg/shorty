@@ -39,12 +39,17 @@ func TestNewConfig_DefaultValues(t *testing.T) {
 
 // Returns a Config object with the specified values when all flags and environment variables are set.
 func TestNewConfig_SpecifiedValues(t *testing.T) {
+	opt.RunAddrOpt = "localhost:9090"
+	opt.BaseAddrOpt = "http://example.com:8080"
+	opt.FileStorageOpt = "/tmp/random.json"
+	opt.DBStorageOpt = "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
+
 	config := &Config{
-		runAddr:     NetAddress{"localhost", 8080},
-		baseAddr:    &url.URL{Scheme: "http", Host: "localhost:8080"},
-		storageType: "file",
-		fileStorage: "/tmp/short-url-db.json",
-		dbStorage:   "/dev/null",
+		runAddr:     NetAddress{"localhost", 9090},
+		baseAddr:    &url.URL{Scheme: "http", Host: "example.com:8080"},
+		storageType: "db",
+		fileStorage: "/tmp/random.json",
+		dbStorage:   "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable",
 	}
 	assert.Equal(t, *config, NewConfig())
 }
@@ -60,13 +65,9 @@ func TestNewConfig_EnvironmentParsingError1(t *testing.T) {
 			NewConfig()
 		},
 	)
-}
 
-func TestNewConfig_EnvironmentParsingError2(t *testing.T) {
-	// Set an invalid environment variable
 	os.Setenv("SERVER_ADDRESS", "invalid:XXX")
 
-	// Assert that the NewConfig function panics with an error message
 	assert.PanicsWithError(t, "port should be in numerical format",
 		func() {
 			NewConfig()
