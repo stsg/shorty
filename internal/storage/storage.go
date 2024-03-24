@@ -35,6 +35,7 @@ type ResJSONURL struct {
 	URL    string `json:"original_url,omitempty"`
 }
 
+// ShortURLLength is the length of the short URL.
 var ShortURLLength = 6
 
 // ErrUniqueViolation is an error that is returned when a short URL already exist.
