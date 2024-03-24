@@ -10,6 +10,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// ZapLogger returns a function that can be used as middleware to log HTTP requests and responses using Zap logger.
+//
+// It takes a *zap.Logger as input parameter and returns a function that takes http.Handler as input parameter and returns http.Handler.
 func ZapLogger(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
