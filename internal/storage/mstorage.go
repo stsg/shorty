@@ -5,7 +5,6 @@ import (
 )
 
 // ShortURL length
-const ShortURLLength = 6
 
 // MapStorage is a struct that holds memory storage data.
 type MapStorage struct {

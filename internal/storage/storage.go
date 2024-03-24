@@ -35,6 +35,8 @@ type ResJSONURL struct {
 	URL    string `json:"original_url,omitempty"`
 }
 
+var ShortURLLength = 6
+
 // ErrUniqueViolation is an error that is returned when a short URL already exist.
 var ErrUniqueViolation = errors.New("short URL already exist")
 
@@ -68,6 +70,10 @@ type Storage interface {
 // It returns the generated short URL as a string.
 func GenShortURL() string {
 	charset := "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+	if ShortURLLength < 1 {
+		return ""
+	}
 
 	shortURL := make([]byte, ShortURLLength)
 	for i := range shortURL {
