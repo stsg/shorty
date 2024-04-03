@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/stsg/shorty/internal/app"
 	"github.com/stsg/shorty/internal/config"
-	"github.com/stsg/shorty/internal/handle"
 	"github.com/stsg/shorty/internal/storage"
 
 	// "github.com/magiconair/properties/assert"
@@ -80,7 +80,7 @@ func Test_getShortURL(t *testing.T) {
 	strg, err := storage.New(conf)
 	assert.NoError(t, err, "Error creating storage")
 
-	hndl := handle.NewHandle(conf, strg)
+	hndl := app.NewApp(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortRequest)
 	srv := httptest.NewServer(handler)
@@ -176,7 +176,7 @@ func Test_getRealURL(t *testing.T) {
 	strg, err := storage.New(conf)
 	assert.NoError(t, err, "Error creating storage")
 
-	hndl := handle.NewHandle(conf, strg)
+	hndl := app.NewApp(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortID)
 	srv := httptest.NewServer(handler)
@@ -291,7 +291,7 @@ func Test_getShortURLJSON(t *testing.T) {
 	strg, err := storage.New(conf)
 	assert.NoError(t, err, "Error creating storage")
 
-	hndl := handle.NewHandle(conf, strg)
+	hndl := app.NewApp(conf, strg)
 
 	handler := http.HandlerFunc(hndl.HandleShortRequestJSON)
 	srv := httptest.NewServer(handler)
