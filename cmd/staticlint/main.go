@@ -28,6 +28,7 @@ import (
 	"honnef.co/go/tools/stylecheck"
 )
 
+// OSExit is an analyzer that checks for os.Exit finction calls in main package.
 var OSExit = &analysis.Analyzer{
 	Name: "osexit",
 	Doc:  "check for os.Exit in main package",
@@ -73,6 +74,10 @@ func main() {
 
 }
 
+// run performs analysis on the given *analysis.Pass object.
+//
+// It iterates through each file in the pass, inspects the AST nodes for function calls, and reports if os.Exit is called in the main function.
+// Returns nil and nil.
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 		ast.Inspect(file, func(n ast.Node) bool {
@@ -89,6 +94,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
+// OSExitChecker checks if the given CallExpr corresponds to an os.Exit call in the main package.
+//
+// Parameters: pass *analysis.Pass, x *ast.CallExpr
+// Returns: bool
 func OSExitChecker(pass *analysis.Pass, x *ast.CallExpr) bool {
 	if selector, ok := x.Fun.(*ast.SelectorExpr); ok {
 		if id, ok := selector.X.(*ast.Ident); ok && id.Name == "os" && selector.Sel.Name == "Exit" && pass.Pkg.Name() == "main" {
