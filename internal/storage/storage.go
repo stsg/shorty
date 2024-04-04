@@ -41,7 +41,7 @@ var ShortURLLength = 6
 // ErrUniqueViolation is an error that is returned when a short URL already exist.
 var ErrUniqueViolation = errors.New("short URL already exist")
 
-// This class definition represents a storage interface in Go. Here's a list explaining what each method does:
+// Storage class definition represents a storage interface in Go. Here's a list explaining what each method does:
 //
 // Save(userID uint64, shortURL string, longURL string) error: Saves a short URL and its corresponding long URL for a specific user.
 // GetRealURL(shortURL string) (string, error): Retrieves the real (long) URL associated with a given short URL.

@@ -1,3 +1,4 @@
+// Package storage provides a DB storage implementation.
 package storage
 
 import (
@@ -15,7 +16,7 @@ import (
 
 const uniqueViolation = pq.ErrorCode("23505")
 
-// URLDeleted error is returned when a URL is deleted.
+// ErrURLDeleted error is returned when a URL is deleted.
 var ErrURLDeleted = errors.New("URL deleted")
 
 // DBStorage is a struct that holds DB storage data.
@@ -142,8 +143,8 @@ func (s *DBStorage) GetRealURL(shortURL string) (string, error) {
 func (s *DBStorage) GetShortURLBatch(userID uint64, bAddr string, longURLs []ReqJSONBatch) ([]ResJSONBatch, error) {
 	var rwJSON []ResJSONBatch
 
-	tx, err := s.db.Begin()
-	if err != nil {
+	tx, txErr := s.db.Begin()
+	if txErr != nil {
 		return rwJSON, errors.New("cannot start transaction when saving new short URL")
 	}
 	defer tx.Rollback()
@@ -160,7 +161,7 @@ func (s *DBStorage) GetShortURLBatch(userID uint64, bAddr string, longURLs []Req
 		}
 		rwJSON = append(rwJSON, rwElemJSON)
 	}
-	if err = tx.Commit(); err != nil {
+	if txErr = tx.Commit(); txErr != nil {
 		return rwJSON, errors.New("cannot commit transaction when saving new short URL")
 	}
 	return rwJSON, nil

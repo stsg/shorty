@@ -19,9 +19,9 @@ var conf config.Config
 
 func Test_getShortURL(t *testing.T) {
 	type want struct {
-		statusCode  int
 		contentType string
 		response    string
+		statusCode  int
 	}
 	tests := []struct {
 		name    string
@@ -109,10 +109,10 @@ func Test_getShortURL(t *testing.T) {
 
 func Test_getRealURL(t *testing.T) {
 	type want struct {
-		statusCode  int
 		contentType string
 		location    string
 		response    string
+		statusCode  int
 	}
 
 	tests := []struct {
@@ -213,9 +213,9 @@ func Test_getShortURLJSON(t *testing.T) {
 	}
 
 	type want struct {
-		statusCode  int
 		contentType string
 		response    resJSON
+		statusCode  int
 	}
 
 	tests := []struct {

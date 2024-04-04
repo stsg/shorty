@@ -24,11 +24,15 @@ import (
 	"golang.org/x/tools/go/analysis/passes/unmarshal"
 	"golang.org/x/tools/go/analysis/passes/unreachable"
 	"golang.org/x/tools/go/analysis/passes/unusedresult"
+
 	"honnef.co/go/tools/staticcheck"
 	"honnef.co/go/tools/stylecheck"
+
+	"github.com/jingyugao/rowserrcheck/passes/rowserr"
+	"github.com/timakin/bodyclose/passes/bodyclose"
 )
 
-// OSExit is an analyzer that checks for os.Exit finction calls in main package.
+// OSExit is an analyzer that checks for os.Exit function calls in main package.
 var OSExit = &analysis.Analyzer{
 	Name: "osexit",
 	Doc:  "check for os.Exit in main package",
@@ -39,6 +43,7 @@ func main() {
 	checks := []*analysis.Analyzer{
 		assign.Analyzer,
 		atomic.Analyzer,
+		bodyclose.Analyzer,
 		bools.Analyzer,
 		composite.Analyzer,
 		copylock.Analyzer,
@@ -56,6 +61,9 @@ func main() {
 		unmarshal.Analyzer,
 		unreachable.Analyzer,
 		unusedresult.Analyzer,
+		rowserr.NewAnalyzer(
+			"github.com/jackc/pgx/v5",
+		),
 	}
 
 	for _, v := range staticcheck.Analyzers {

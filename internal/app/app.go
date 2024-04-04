@@ -1,3 +1,4 @@
+// Package app provides main application logic.
 package app
 
 import (
@@ -24,7 +25,7 @@ import (
 	mylogger "github.com/stsg/shorty/internal/logger"
 )
 
-// This class definition defines a struct named App with the following fields:
+// App class definition defines a struct named App with the following fields:
 //
 // Config of type config.Config
 // storage of type storage.Storage
@@ -33,10 +34,10 @@ import (
 //
 // App holds main application
 type App struct {
-	Config  config.Config
 	storage storage.Storage
 	Session *Session
 	delChan chan map[string]uint64
+	Config  config.Config
 }
 
 // Session is a struct that holds user session data.

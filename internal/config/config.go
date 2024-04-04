@@ -1,3 +1,4 @@
+// Package config - config package for shorty service, URL shortener application
 package config
 
 import (
@@ -17,7 +18,7 @@ const defaultFileStorage string = "/tmp/short-url-db.json"
 // should be in form "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
 const defaultDBStorage string = ""
 
-// This class definition defines a struct holds Options
+// Options class definition defines a struct holds Options
 // with four fields: RunAddrOpt, BaseAddrOpt, FileStorageOpt, and DBStorageOpt.
 // Each field is tagged with an env tag,
 // which specifies the name of the environment variable
@@ -37,14 +38,13 @@ type NetAddress struct {
 	port int
 }
 
-// Application configuration
+// Config is a struct that holds Application configuration
 type Config struct {
-	// opt         Options
-	runAddr     NetAddress
 	baseAddr    *url.URL
 	storageType string
 	fileStorage string
 	dbStorage   string
+	runAddr     NetAddress
 }
 
 // GetRunAddr returns the run address of the Config object.
