@@ -1,11 +1,15 @@
-B=$(shell git rev-parse --abbrev-ref HEAD)
 ###
 ### Makefile
 ###
 
+VERSION=0.0.1dev
+
+B=$(shell git rev-parse --abbrev-ref HEAD)
 BRANCH=$(subst /,-,$(B))
 GITREV=$(shell git describe --abbrev=7 --always --tags)
 REV=$(GITREV)-$(BRANCH)-$(shell date +%Y%m%d-%H:%M:%S)
+DATE=$(shell date +%Y%m%d-%H:%M:%S)
+COMMIT=$(shell git log -n 1 --pretty=format:"%H")
 
 info:
 	- @echo "revision $(REV)"
@@ -14,7 +18,14 @@ build: info
 	@ echo
 	@ echo "Compiling Binary"
 	@ echo
-	cd cmd/shortener && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.revision=$(REV) -s -w" -o shortener
+	cd cmd/shortener && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildDate=$(DATE) -s -w" -o shortener
+	# go build -o cmd/shortener/shortener cmd/shortener/*.go
+
+build_macos: info
+	@ echo
+	@ echo "Compiling Binary for MacOS"
+	@ echo
+	cd cmd/shortener && GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildDate=$(DATE) -s -w" -o shortener
 	# go build -o cmd/shortener/shortener cmd/shortener/*.go
 
 tidy:
