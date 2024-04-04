@@ -23,9 +23,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	app := app.NewApp(conf, pStorage)
-	err = app.Run()
+	shortyApp := app.NewApp(conf, pStorage)
+	err = shortyApp.Run()
 	if err != nil {
 		panic(fmt.Errorf("application running error: %v", err))
 	}
+
+	// os.Exit(256)
 }
