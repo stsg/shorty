@@ -46,6 +46,11 @@ func TestZapLogger_LogsRequestsAndResponses(t *testing.T) {
 	rLog0 := logs[0]
 	assert.Equal(t, "header", rLog0.Message)
 	assert.Equal(t, 2, len(rLog0.Context))
+	if rLog0.Context[0].Key == "Authorization" {
+		assert.Equal(t, "Content-Type", rLog0.Context[1].Key)
+	} else {
+		assert.Equal(t, "Authorization", rLog0.Context[1].Key)
+	}
 	assert.Equal(t, "Authorization", rLog0.Context[1].Key)
 	assert.Equal(t, "Content-Type", rLog0.Context[0].Key)
 
