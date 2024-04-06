@@ -58,4 +58,4 @@ run:
 	@ echo
 	go run cmd/shortener/main.go -d "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
 
-PHONY: *
+PHONY: build tidy clean utest test run
