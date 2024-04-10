@@ -10,6 +10,12 @@ import (
 	"github.com/stsg/shorty/internal/storage"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 // main is the entry point of the program.
 //
 // It initializes the configuration, creates a new storage instance, and sets up the logger.
@@ -17,15 +23,16 @@ import (
 // After that, it mounts the debug routes and sets up the routes for handling different requests.
 // Finally, it starts the HTTP server and listens for incoming requests.
 func main() {
+	fmt.Printf("shorty version: %s, build date: %s, build commit: %s\n", buildVersion, buildDate, buildCommit)
 	conf := config.NewConfig()
 	fmt.Println("storage type:", conf.GetStorageType())
 	pStorage, err := storage.New(conf)
 	if err != nil {
 		panic(err)
 	}
-	app := app.NewApp(conf, pStorage)
-	err = app.Run()
+	shortyApp := app.NewApp(conf, pStorage)
+	err = shortyApp.Run()
 	if err != nil {
-		panic(fmt.Errorf("application running error: %v", err))
+		panic(fmt.Sprintf("application running error: %v", err))
 	}
 }

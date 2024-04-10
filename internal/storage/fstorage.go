@@ -12,10 +12,10 @@ import (
 
 // FileStorage is a struct that holds FS storage data.
 type FileStorage struct {
-	Path  string
 	File  *os.File
-	count int
+	Path  string
 	fm    []fileMap
+	count int
 }
 
 // URL file storage srtruct

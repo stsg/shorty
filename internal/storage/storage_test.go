@@ -16,7 +16,7 @@ func BenchmarkGenShortURL(b *testing.B) {
 
 func TestGenShortURLWithValidLength(t *testing.T) {
 	// Set the ShortURLLength to a valid value
-	ShortURLLength := 6
+	ShortURLLength = 6
 
 	// Call the GenShortURL function
 	result := GenShortURL()
