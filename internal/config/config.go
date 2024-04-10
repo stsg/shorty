@@ -172,6 +172,11 @@ func NewConfig() Config {
 
 	return res
 }
+
+// init initializes the configuration by setting up flag options.
+//
+// No parameters.
+// No return types.
 func init() {
 	flag.StringVar(&opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
 	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")

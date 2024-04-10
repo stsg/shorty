@@ -52,6 +52,4 @@ func main() {
 	}
 	// и печатаем его
 	fmt.Println(string(body))
-
-	// os.Exit(256)
 }

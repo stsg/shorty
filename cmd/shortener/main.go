@@ -33,8 +33,6 @@ func main() {
 	shortyApp := app.NewApp(conf, pStorage)
 	err = shortyApp.Run()
 	if err != nil {
-		panic(fmt.Errorf("application running error: %v", err))
+		panic(fmt.Sprintf("application running error: %v", err))
 	}
-
-	// os.Exit(256)
 }
