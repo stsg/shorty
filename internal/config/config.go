@@ -2,9 +2,12 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -17,6 +20,7 @@ const defaultFileStorage string = "/tmp/short-url-db.json"
 
 // should be in form "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
 const defaultDBStorage string = ""
+const defaultConfigFile string = ""
 
 // Options class definition defines a struct holds Options
 // with four fields: RunAddrOpt, BaseAddrOpt, FileStorageOpt, and DBStorageOpt.
@@ -24,11 +28,12 @@ const defaultDBStorage string = ""
 // which specifies the name of the environment variable
 // that should be used to set the value of that field.
 type Options struct {
-	RunAddrOpt     string `env:"SERVER_ADDRESS"`
-	BaseAddrOpt    string `env:"BASE_URL"`
-	FileStorageOpt string `env:"FILE_STORAGE_PATH"`
-	DBStorageOpt   string `env:"DATABASE_DSN"`
-	EnableHTTPS    bool   `env:"ENABLE_HTPPS"`
+	RunAddrOpt     string `env:"SERVER_ADDRESS" json:"server_address,omitempty"`
+	BaseAddrOpt    string `env:"BASE_URL" json:"base_url,omitempty"`
+	FileStorageOpt string `env:"FILE_STORAGE_PATH" json:"file_storage_path,omitempty"`
+	DBStorageOpt   string `env:"DATABASE_DSN" json:"database_dsn,omitempty"`
+	EnableHTTPS    bool   `env:"ENABLE_HTPPS" json:"enable_https,omitempty"`
+	ConfigFile     string `env:"CONFIG"`
 }
 
 var opt Options
@@ -47,6 +52,7 @@ type Config struct {
 	dbStorage   string
 	runAddr     NetAddress
 	enableHTTPS bool
+	configFile  string
 }
 
 // GetRunAddr returns the run address of the Config object.
@@ -100,6 +106,14 @@ func (conf Config) GetEnableHTTPS() bool {
 	return conf.enableHTTPS
 }
 
+// GetConfigFile returns the config file path from the Config struct.
+//
+// No parameters.
+// Returns a string.
+func (conf Config) GetConfigFile() string {
+	return conf.configFile
+}
+
 // NewConfig creates a new Config object by parsing command line flags and environment variables.
 //
 // It returns a Config object with the following fields:
@@ -136,6 +150,20 @@ func NewConfig() Config {
 	if err != nil {
 		// OS environment parsing error
 		panic(errors.New("cannot parse OS environment"))
+	}
+
+	if opt.ConfigFile != "" {
+		// res.configFile = opt.ConfigFile
+		fmt.Println("reading config file:", opt.ConfigFile)
+		configData, err := os.ReadFile(opt.ConfigFile)
+		if err != nil {
+			panic(errors.New("cannot read config file"))
+		}
+		err = json.Unmarshal(configData, &opt)
+		if err != nil {
+			panic(errors.New("cannot parse config file"))
+		}
+		fmt.Println("config file parsed")
 	}
 
 	hp := strings.Split(opt.RunAddrOpt, ":")
@@ -196,4 +224,5 @@ func init() {
 	flag.StringVar(&opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
 	flag.StringVar(&opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
 	flag.BoolVar(&opt.EnableHTTPS, "s", false, "enable HTTPS")
+	flag.StringVar(&opt.ConfigFile, "c", defaultConfigFile, "config file path")
 }

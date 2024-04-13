@@ -18,15 +18,13 @@ build: info
 	@ echo
 	@ echo "Compiling Binary"
 	@ echo
-	cd cmd/shortener && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildDate=$(DATE) -s -w" -o shortener
-	# go build -o cmd/shortener/shortener cmd/shortener/*.go
+	cd cmd/shorty && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildDate=$(DATE) -s -w" -o shorty
 
 build_macos: info
 	@ echo
 	@ echo "Compiling Binary for MacOS"
 	@ echo
-	cd cmd/shortener && GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildDate=$(DATE) -s -w" -o shortener
-	# go build -o cmd/shortener/shortener cmd/shortener/*.go
+	cd cmd/shorty && GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildDate=$(DATE) -s -w" -o shorty
 
 tidy:
 	@ echo
@@ -38,7 +36,7 @@ clean:
 	@ echo
 	@ echo "Cleaning"
 	@ echo
-	rm cmd/shortener/shortener
+	rm cmd/shorty/shorty
 
 utest: build
 	@ echo
@@ -50,12 +48,12 @@ test: build
 	@ echo
 	@ echo "Testing"
 	@ echo
-	shortenertest -test.v -test.run=^TestIteration1\$$ -binary-path=cmd/shortener/shortener
+	shortytest -test.v -test.run=^TestIteration1\$$ -binary-path=cmd/shorty/shorty
 
 run:
 	@ echo
 	@ echo "Runnig"
 	@ echo
-	go run cmd/shortener/main.go -d "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
+	go run cmd/shorty/main.go -d "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
 
 PHONY: build tidy clean utest test run

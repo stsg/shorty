@@ -98,6 +98,7 @@ func (app *App) Run() error {
 		if err != nil {
 			panic(fmt.Sprintf("cannot create certificate: %v", err))
 		}
+		fmt.Println("Certificate created.")
 		err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
 		if err != nil {
 			panic(fmt.Sprintf("cannot run https server: %v", err))
