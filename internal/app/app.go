@@ -116,7 +116,7 @@ func (app *App) Run() error {
 //
 // No parameters.
 // Returns an error.
-func (a *App) createCertificate() error {
+func (app *App) createCertificate() error {
 	maxInt := 1024
 	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(int64(maxInt)),
