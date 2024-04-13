@@ -2,12 +2,21 @@
 package app
 
 import (
+	"bytes"
 	"compress/gzip"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -78,12 +87,84 @@ func (app *App) Run() error {
 		childRouter.Delete("/user/urls", app.HandleDeleteURLs)
 	})
 
-	err = http.ListenAndServe(app.Config.GetRunAddr(), router)
-	if err != nil {
-		panic(fmt.Errorf("cannot run server: %v", err))
+	srv := &http.Server{
+		Addr:    app.Config.GetRunAddr(),
+		Handler: router,
+	}
+
+	if app.Config.GetEnableHTTPS() {
+		fmt.Println("Creating certificate...")
+		err = app.createCertificate()
+		if err != nil {
+			panic(fmt.Sprintf("cannot create certificate: %v", err))
+		}
+		err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
+		if err != nil {
+			panic(fmt.Sprintf("cannot run https server: %v", err))
+		}
+	} else {
+		err = srv.ListenAndServe()
+		if err != nil {
+			panic(fmt.Sprintf("cannot run http server: %v", err))
+		}
 	}
 
 	return err
+}
+
+// createCertificate generates a certificate and private key, saving them to disk.
+//
+// No parameters.
+// Returns an error.
+func (a *App) createCertificate() error {
+	maxInt := 1024
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(int64(maxInt)),
+		Subject: pkix.Name{
+			Organization:       []string{"Localhost Ent."},
+			OrganizationalUnit: []string{"Shorty Server"},
+			CommonName:         "localhost",
+			Country:            []string{"RU"},
+		},
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return fmt.Errorf("error generate key %w", err)
+	}
+
+	certData, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		return fmt.Errorf("error create certificate %w", err)
+	}
+
+	var certDataBytes bytes.Buffer
+	err = pem.Encode(&certDataBytes, &pem.Block{Type: "CERTIFICATE", Bytes: certData})
+	if err != nil {
+		return fmt.Errorf("error encode certificate %w", err)
+	}
+	err = os.WriteFile("./data/cert/cert.pem", certDataBytes.Bytes(), 0644)
+	if err != nil {
+		return fmt.Errorf("error write certificate %w", err)
+	}
+
+	var privateKeyBytes bytes.Buffer
+	err = pem.Encode(&privateKeyBytes, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})
+	if err != nil {
+		return fmt.Errorf("error encode private key %w", err)
+	}
+	err = os.WriteFile("./data/cert/key.pem", privateKeyBytes.Bytes(), 0644)
+	if err != nil {
+		return fmt.Errorf("error write private key %w", err)
+	}
+
+	return nil
 }
 
 // NewSession creates a new session with the given storage.

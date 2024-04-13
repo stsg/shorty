@@ -26,6 +26,7 @@ func main() {
 	fmt.Printf("shorty version: %s, build date: %s, build commit: %s\n", buildVersion, buildDate, buildCommit)
 	conf := config.NewConfig()
 	fmt.Println("storage type:", conf.GetStorageType())
+	fmt.Println("https:", conf.GetEnableHTTPS())
 	pStorage, err := storage.New(conf)
 	if err != nil {
 		panic(err)
