@@ -92,7 +92,7 @@ func (app *App) Run(ctx context.Context) error {
 		Addr:              app.Config.GetRunAddr(),
 		Handler:           router,
 		ReadHeaderTimeout: 30 * time.Second,
-		IdleTimeout:       30 * time.Second,
+		IdleTimeout:       time.Second,
 	}
 
 	go func() {
@@ -112,12 +112,12 @@ func (app *App) Run(ctx context.Context) error {
 		}
 		fmt.Println("Certificate created.")
 		err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
-		if err != nil {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(fmt.Sprintf("cannot run https server: %v", err))
 		}
 	} else {
 		err = srv.ListenAndServe()
-		if err != nil {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(fmt.Sprintf("cannot run http server: %v", err))
 		}
 	}
