@@ -4,6 +4,7 @@ package app
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -60,7 +61,7 @@ type Session struct {
 //
 // It initializes the logger and router, sets up middleware, mounts routes, and starts the server.
 // It returns an error if there is any issue running the server.
-func (app *App) Run() error {
+func (app *App) Run(ctx context.Context) error {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		panic(errors.New("cannot create logger"))
@@ -88,9 +89,20 @@ func (app *App) Run() error {
 	})
 
 	srv := &http.Server{
-		Addr:    app.Config.GetRunAddr(),
-		Handler: router,
+		Addr:              app.Config.GetRunAddr(),
+		Handler:           router,
+		ReadHeaderTimeout: 30 * time.Second,
+		IdleTimeout:       30 * time.Second,
 	}
+
+	go func() {
+		<-ctx.Done()
+		if srv != nil {
+			if err := srv.Close(); err != nil {
+				fmt.Printf("failed to close http server: %v", err)
+			}
+		}
+	}()
 
 	if app.Config.GetEnableHTTPS() {
 		fmt.Println("Creating certificate...")

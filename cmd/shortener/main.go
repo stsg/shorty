@@ -2,8 +2,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/stsg/shorty/internal/app"
 	"github.com/stsg/shorty/internal/config"
@@ -31,9 +35,25 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		if x := recover(); x != nil {
+			fmt.Printf("panic: %v\n", x)
+			panic(x)
+		}
+
+		// catch signal for graceful shutdown
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		<-stop
+		fmt.Println("shutting down by signal")
+		cancel()
+	}()
+
 	shortyApp := app.NewApp(conf, pStorage)
-	err = shortyApp.Run()
-	if err != nil {
+	err = shortyApp.Run(ctx)
+	if err != nil && err.Error() != "http: Server closed" {
 		panic(fmt.Sprintf("application running error: %v", err))
 	}
 }
