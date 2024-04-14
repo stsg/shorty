@@ -32,4 +32,4 @@ qodana.yaml
 .fleet/
 
 #
-./data/cert/
+data/cert/
