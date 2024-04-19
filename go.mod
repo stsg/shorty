@@ -30,7 +30,7 @@ require (
 	github.com/timakin/bodyclose v0.0.0-20240125160201-f835fa56326a
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/tools v0.19.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/tools v0.4.7
