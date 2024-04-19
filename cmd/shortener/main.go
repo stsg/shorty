@@ -7,6 +7,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"github.com/stsg/shorty/internal/app"
@@ -45,9 +46,11 @@ func main() {
 
 		// catch signal for graceful shutdown
 		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		// signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 		<-stop
 		fmt.Println("shutting down by signal")
+		fmt.Printf("stacktrace:\n%s\n", getDump())
 		cancel()
 	}()
 
@@ -56,4 +59,14 @@ func main() {
 	if err != nil && err.Error() != "http: Server closed" {
 		panic(fmt.Sprintf("application running error: %v", err))
 	}
+}
+
+func getDump() string {
+	maxSize := 5 * 1024 * 1024
+	stacktrace := make([]byte, maxSize)
+	length := runtime.Stack(stacktrace, true)
+	if length > maxSize {
+		length = maxSize
+	}
+	return string(stacktrace[:length])
 }
