@@ -3,17 +3,24 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
 	"syscall"
 
+	"go.uber.org/zap"
+
 	"github.com/stsg/shorty/internal/app"
 	"github.com/stsg/shorty/internal/config"
+	"github.com/stsg/shorty/internal/logger"
 	"github.com/stsg/shorty/internal/storage"
 )
+
+const maxDupmSize = 5 * 1024 * 1024
 
 var (
 	buildVersion = "N/A"
@@ -28,10 +35,24 @@ var (
 // After that, it mounts the debug routes and sets up the routes for handling different requests.
 // Finally, it starts the HTTP server and listens for incoming requests.
 func main() {
-	fmt.Printf("shorty version: %s, build date: %s, build commit: %s\n", buildVersion, buildDate, buildCommit)
+	// logger, _ := zap.NewDevelopment()
+	logger := logger.Get()
+	// zFields := []zap.Field{
+	// 	zap.String("version", buildVersion),
+	// 	zap.String("commit", buildCommit),
+	// 	zap.String("date", buildDate),
+	// }
+	// observedZapCore, observerLogs := observer.New(zap.InfoLevel)
+	logger.Info("starting shorty", zap.String("version", buildVersion), zap.String("date", buildDate), zap.String("commit", buildCommit))
+	// logger.Info("starting shorty", zFields...)
+
+	// , zap.String("date", buildDate)
+	// fmt.Printf("shorty version: %s, build date: %s, build commit: %s\n", buildVersion, buildDate, buildCommit)
 	conf := config.NewConfig()
-	fmt.Println("storage type:", conf.GetStorageType())
-	fmt.Println("https:", conf.GetEnableHTTPS())
+	// fmt.Println("storage type:", conf.GetStorageType())
+	logger.Info("config:", zap.String("storage type", conf.GetStorageType()))
+	// fmt.Println("https:", conf.GetEnableHTTPS())
+	logger.Info("config:", zap.Bool("https", conf.GetEnableHTTPS()))
 	pStorage, err := storage.New(conf)
 	if err != nil {
 		panic(err)
@@ -39,33 +60,29 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		if x := recover(); x != nil {
-			fmt.Printf("panic: %v\n", x)
-			panic(x)
-		}
-
 		// catch signal for graceful shutdown
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 		<-stop
-		fmt.Println("shutting down by signal")
-		fmt.Printf("stacktrace:\n%s\n", getDump())
+		// fmt.Println("shutting down by signal")
+		logger.Info("shutting down by signal")
+		// fmt.Printf("stacktrace:\n%s\n", getDump())
+		logger.Info("stacktrace:", zap.String("stacktrace", getDump()))
 		cancel()
 	}()
 
 	shortyApp := app.NewApp(conf, pStorage)
 	err = shortyApp.Run(ctx)
-	if err != nil && err.Error() != "http: Server closed" {
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		panic(fmt.Sprintf("application running error: %v", err))
 	}
 }
 
 func getDump() string {
-	maxSize := 5 * 1024 * 1024
-	stacktrace := make([]byte, maxSize)
+	stacktrace := make([]byte, maxDupmSize)
 	length := runtime.Stack(stacktrace, true)
-	if length > maxSize {
-		length = maxSize
+	if length > maxDupmSize {
+		length = maxDupmSize
 	}
 	return string(stacktrace[:length])
 }

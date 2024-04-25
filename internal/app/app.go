@@ -30,10 +30,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"go.uber.org/zap"
-
 	mylogger "github.com/stsg/shorty/internal/logger"
 )
+
+const certSerialMaxInt = 1024
 
 // App class definition defines a struct named App with the following fields:
 //
@@ -62,17 +62,26 @@ type Session struct {
 // It initializes the logger and router, sets up middleware, mounts routes, and starts the server.
 // It returns an error if there is any issue running the server.
 func (app *App) Run(ctx context.Context) error {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(errors.New("cannot create logger"))
-	}
-	defer logger.Sync()
+	// logger, err := zap.NewDevelopment()
+	// var err error
+	logger := mylogger.Get()
+	// if err != nil {
+	// 	panic(errors.New("cannot create logger"))
+	// }
+	defer func() {
+		logger.Sync()
+		if x := recover(); x != nil {
+			// fmt.Printf("panic: %v\n", x)
+			logger.Sugar().Error(x)
+			panic(x)
+		}
+	}()
 
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
-	router.Use(mylogger.ZapLogger(logger))
+	router.Use(mylogger.ZapLogger())
 	router.Use(app.Decompress())
 	router.Use(middleware.Compress(5, "application/json", "text/html"))
 
@@ -105,24 +114,26 @@ func (app *App) Run(ctx context.Context) error {
 	}()
 
 	if app.Config.GetEnableHTTPS() {
-		fmt.Println("Creating certificate...")
-		err = app.createCertificate()
+		// fmt.Println("Creating certificate...")
+		logger.Info("Creating certificate...")
+		err := app.createCertificate()
 		if err != nil {
 			panic(fmt.Sprintf("cannot create certificate: %v", err))
 		}
-		fmt.Println("Certificate created.")
+		// fmt.Println("Certificate created.")
+		logger.Info("Certificate created.")
 		err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(fmt.Sprintf("cannot run https server: %v", err))
 		}
 	} else {
-		err = srv.ListenAndServe()
+		err := srv.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			panic(fmt.Sprintf("cannot run http server: %v", err))
 		}
 	}
 
-	return err
+	return nil
 }
 
 // createCertificate generates a certificate and private key, saving them to disk.
@@ -130,9 +141,8 @@ func (app *App) Run(ctx context.Context) error {
 // No parameters.
 // Returns an error.
 func (app *App) createCertificate() error {
-	maxInt := 1024
 	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(int64(maxInt)),
+		SerialNumber: big.NewInt(int64(certSerialMaxInt)),
 		Subject: pkix.Name{
 			Organization:       []string{"Localhost Ent."},
 			OrganizationalUnit: []string{"Shorty Server"},

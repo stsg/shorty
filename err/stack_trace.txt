@@ -1,0 +1,70 @@
+^Cshutting down by signal
+stacktrace:
+goroutine 12 [running]:
+main.getDump()
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/cmd/shortener/main.go:87 +0x3c
+main.main.func1()
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/cmd/shortener/main.go:74 +0x11a
+created by main.main in goroutine 1
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/cmd/shortener/main.go:63 +0x606
+
+goroutine 1 [IO wait]:
+internal/poll.runtime_pollWait(0x7502156a7ed8, 0x72)
+	/usr/lib/go/src/runtime/netpoll.go:345 +0x85
+internal/poll.(*pollDesc).wait(0x8?, 0x0?, 0x0)
+	/usr/lib/go/src/internal/poll/fd_poll_runtime.go:84 +0x27
+internal/poll.(*pollDesc).waitRead(...)
+	/usr/lib/go/src/internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Accept(0xc00022a100)
+	/usr/lib/go/src/internal/poll/fd_unix.go:611 +0x2ac
+net.(*netFD).accept(0xc00022a100)
+	/usr/lib/go/src/net/fd_unix.go:172 +0x29
+net.(*TCPListener).accept(0xc000174580)
+	/usr/lib/go/src/net/tcpsock_posix.go:159 +0x1e
+net.(*TCPListener).Accept(0xc000174580)
+	/usr/lib/go/src/net/tcpsock.go:327 +0x30
+crypto/tls.(*listener).Accept(0xc00020d2c0)
+	/usr/lib/go/src/crypto/tls/tls.go:66 +0x27
+net/http.(*Server).Serve(0xc00017a000, {0x8a1150, 0xc00020d2c0})
+	/usr/lib/go/src/net/http/server.go:3255 +0x33e
+net/http.(*Server).ServeTLS(0xc00017a000, {0x8a1300, 0xc000174580}, {0x804262, 0x14}, {0x8037d1, 0x13})
+	/usr/lib/go/src/net/http/server.go:3325 +0x486
+net/http.(*Server).ListenAndServeTLS(0xc00017a000, {0x804262, 0x14}, {0x8037d1, 0x13})
+	/usr/lib/go/src/net/http/server.go:3482 +0x125
+github.com/stsg/shorty/internal/app.(*App).Run(0xc00011a3f0, {0x8a19e0, 0xc00009c5a0})
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/internal/app/app.go:117 +0xaea
+main.main()
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/cmd/shortener/main.go:79 +0x6d1
+
+goroutine 6 [chan receive, 1 minutes]:
+gopkg.in/natefinch/lumberjack%2ev2.(*Logger).millRun(...)
+	/home/sts/go/pkg/mod/gopkg.in/natefinch/lumberjack.v2@v2.2.1/lumberjack.go:379
+created by gopkg.in/natefinch/lumberjack%2ev2.(*Logger).mill.func1 in goroutine 1
+	/home/sts/go/pkg/mod/gopkg.in/natefinch/lumberjack.v2@v2.2.1/lumberjack.go:390 +0x96
+
+goroutine 7 [select, 1 minutes]:
+database/sql.(*DB).connectionOpener(0xc0000b1c70, {0x8a19e0, 0xc00009c1e0})
+	/usr/lib/go/src/database/sql/sql.go:1246 +0x87
+created by database/sql.OpenDB in goroutine 1
+	/usr/lib/go/src/database/sql/sql.go:824 +0x14c
+
+goroutine 34 [syscall]:
+os/signal.signal_recv()
+	/usr/lib/go/src/runtime/sigqueue.go:152 +0x29
+os/signal.loop()
+	/usr/lib/go/src/os/signal/signal_unix.go:23 +0x13
+created by os/signal.Notify.func1.1 in goroutine 12
+	/usr/lib/go/src/os/signal/signal.go:151 +0x1f
+
+goroutine 13 [chan receive, 1 minutes]:
+github.com/stsg/shorty/internal/app.NewApp.func1()
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/internal/app/app.go:255 +0x65
+created by github.com/stsg/shorty/internal/app.NewApp in goroutine 1
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/internal/app/app.go:254 +0x1df
+
+goroutine 14 [chan receive, 1 minutes]:
+github.com/stsg/shorty/internal/app.(*App).Run.func2()
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/internal/app/app.go:102 +0x30
+created by github.com/stsg/shorty/internal/app.(*App).Run in goroutine 1
+	/home/sts/Yandex.Disk/srvc/Go Advanded/shorty/internal/app/app.go:101 +0x97f
+

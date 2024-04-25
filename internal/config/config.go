@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/stsg/shorty/internal/logger"
+	"go.uber.org/zap"
 )
 
 const defaultRunAddr string = "localhost:8080"
@@ -143,6 +144,7 @@ func (conf Config) GetConfigFile() string {
 //
 // The function returns the created Config object.
 func NewConfig() Config {
+	logger := logger.Get()
 	res := Config{}
 	flag.Parse()
 
@@ -153,8 +155,8 @@ func NewConfig() Config {
 	}
 
 	if opt.ConfigFile != "" {
-		// res.configFile = opt.ConfigFile
-		fmt.Println("reading config file:", opt.ConfigFile)
+		// fmt.Println("reading config file:", opt.ConfigFile)
+		logger.Info("reading config file", zap.String("path", opt.ConfigFile))
 		configData, err := os.ReadFile(opt.ConfigFile)
 		if err != nil {
 			panic(errors.New("cannot read config file"))
@@ -163,7 +165,8 @@ func NewConfig() Config {
 		if err != nil {
 			panic(errors.New("cannot parse config file"))
 		}
-		fmt.Println("config file parsed")
+		// fmt.Println("config file parsed")
+		logger.Info("config file parsed")
 	}
 
 	hp := strings.Split(opt.RunAddrOpt, ":")
