@@ -35,23 +35,10 @@ var (
 // After that, it mounts the debug routes and sets up the routes for handling different requests.
 // Finally, it starts the HTTP server and listens for incoming requests.
 func main() {
-	// logger, _ := zap.NewDevelopment()
 	logger := logger.Get()
-	// zFields := []zap.Field{
-	// 	zap.String("version", buildVersion),
-	// 	zap.String("commit", buildCommit),
-	// 	zap.String("date", buildDate),
-	// }
-	// observedZapCore, observerLogs := observer.New(zap.InfoLevel)
 	logger.Info("starting shorty", zap.String("version", buildVersion), zap.String("date", buildDate), zap.String("commit", buildCommit))
-	// logger.Info("starting shorty", zFields...)
-
-	// , zap.String("date", buildDate)
-	// fmt.Printf("shorty version: %s, build date: %s, build commit: %s\n", buildVersion, buildDate, buildCommit)
 	conf := config.NewConfig()
-	// fmt.Println("storage type:", conf.GetStorageType())
 	logger.Info("config:", zap.String("storage type", conf.GetStorageType()))
-	// fmt.Println("https:", conf.GetEnableHTTPS())
 	logger.Info("config:", zap.Bool("https", conf.GetEnableHTTPS()))
 	pStorage, err := storage.New(conf)
 	if err != nil {
@@ -64,9 +51,7 @@ func main() {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 		<-stop
-		// fmt.Println("shutting down by signal")
 		logger.Info("shutting down by signal")
-		// fmt.Printf("stacktrace:\n%s\n", getDump())
 		logger.Info("stacktrace:", zap.String("stacktrace", getDump()))
 		cancel()
 	}()

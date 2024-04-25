@@ -62,16 +62,10 @@ type Session struct {
 // It initializes the logger and router, sets up middleware, mounts routes, and starts the server.
 // It returns an error if there is any issue running the server.
 func (app *App) Run(ctx context.Context) error {
-	// logger, err := zap.NewDevelopment()
-	// var err error
 	logger := mylogger.Get()
-	// if err != nil {
-	// 	panic(errors.New("cannot create logger"))
-	// }
 	defer func() {
 		logger.Sync()
 		if x := recover(); x != nil {
-			// fmt.Printf("panic: %v\n", x)
 			logger.Sugar().Error(x)
 			panic(x)
 		}
@@ -108,19 +102,17 @@ func (app *App) Run(ctx context.Context) error {
 		<-ctx.Done()
 		if srv != nil {
 			if err := srv.Close(); err != nil {
-				fmt.Printf("failed to close http server: %v", err)
+				logger.Error("shutting down by signal")
 			}
 		}
 	}()
 
 	if app.Config.GetEnableHTTPS() {
-		// fmt.Println("Creating certificate...")
 		logger.Info("Creating certificate...")
 		err := app.createCertificate()
 		if err != nil {
 			panic(fmt.Sprintf("cannot create certificate: %v", err))
 		}
-		// fmt.Println("Certificate created.")
 		logger.Info("Certificate created.")
 		err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {

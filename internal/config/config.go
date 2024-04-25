@@ -155,7 +155,6 @@ func NewConfig() Config {
 	}
 
 	if opt.ConfigFile != "" {
-		// fmt.Println("reading config file:", opt.ConfigFile)
 		logger.Info("reading config file", zap.String("path", opt.ConfigFile))
 		configData, err := os.ReadFile(opt.ConfigFile)
 		if err != nil {
@@ -165,7 +164,6 @@ func NewConfig() Config {
 		if err != nil {
 			panic(errors.New("cannot parse config file"))
 		}
-		// fmt.Println("config file parsed")
 		logger.Info("config file parsed")
 	}
 
