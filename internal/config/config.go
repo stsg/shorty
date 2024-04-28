@@ -2,13 +2,17 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/stsg/shorty/internal/logger"
+	"go.uber.org/zap"
 )
 
 const defaultRunAddr string = "localhost:8080"
@@ -17,6 +21,7 @@ const defaultFileStorage string = "/tmp/short-url-db.json"
 
 // should be in form "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable"
 const defaultDBStorage string = ""
+const defaultConfigFile string = ""
 
 // Options class definition defines a struct holds Options
 // with four fields: RunAddrOpt, BaseAddrOpt, FileStorageOpt, and DBStorageOpt.
@@ -24,10 +29,12 @@ const defaultDBStorage string = ""
 // which specifies the name of the environment variable
 // that should be used to set the value of that field.
 type Options struct {
-	RunAddrOpt     string `env:"SERVER_ADDRESS"`
-	BaseAddrOpt    string `env:"BASE_URL"`
-	FileStorageOpt string `env:"FILE_STORAGE_PATH"`
-	DBStorageOpt   string `env:"DATABASE_DSN"`
+	RunAddrOpt     string `env:"SERVER_ADDRESS" json:"server_address,omitempty"`
+	BaseAddrOpt    string `env:"BASE_URL" json:"base_url,omitempty"`
+	FileStorageOpt string `env:"FILE_STORAGE_PATH" json:"file_storage_path,omitempty"`
+	DBStorageOpt   string `env:"DATABASE_DSN" json:"database_dsn,omitempty"`
+	EnableHTTPS    bool   `env:"ENABLE_HTPPS" json:"enable_https,omitempty"`
+	ConfigFile     string `env:"CONFIG"`
 }
 
 var opt Options
@@ -45,6 +52,8 @@ type Config struct {
 	fileStorage string
 	dbStorage   string
 	runAddr     NetAddress
+	enableHTTPS bool
+	configFile  string
 }
 
 // GetRunAddr returns the run address of the Config object.
@@ -90,6 +99,22 @@ func (conf Config) GetDBStorage() string {
 	return conf.dbStorage
 }
 
+// GetEnableHTTPS returns the value of the enableHTTPS field from the Config struct.
+//
+// No parameters.
+// Returns a boolean value.
+func (conf Config) GetEnableHTTPS() bool {
+	return conf.enableHTTPS
+}
+
+// GetConfigFile returns the config file path from the Config struct.
+//
+// No parameters.
+// Returns a string.
+func (conf Config) GetConfigFile() string {
+	return conf.configFile
+}
+
 // NewConfig creates a new Config object by parsing command line flags and environment variables.
 //
 // It returns a Config object with the following fields:
@@ -104,6 +129,7 @@ func (conf Config) GetDBStorage() string {
 // - "-b": the shortener address.
 // - "-f": the file storage path.
 // - "-d": the database DSN.
+// - "-s": enable HTTPS.
 //
 // If any of the flags are missing or have invalid values, the function panics.
 //
@@ -112,24 +138,33 @@ func (conf Config) GetDBStorage() string {
 // - "BASE_ADDR": the shortener address.
 // - "FILE_STORAGE": the file storage path.
 // - "DB_STORAGE": the database DSN.
+// - "ENABLE_HTTPS": enable HTTPS.
 //
 // If any of the environment variables are missing or have invalid values, the function panics.
 //
 // The function returns the created Config object.
 func NewConfig() Config {
+	logger := logger.Get()
 	res := Config{}
-	// opt := Options{}
-
-	// flag.StringVar(&res.opt.RunAddrOpt, "a", defaultRunAddr, "address and port to run server")
-	// flag.StringVar(&res.opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
-	// flag.StringVar(&res.opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
-	// flag.StringVar(&res.opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
 	flag.Parse()
 
 	err := env.Parse(&opt)
 	if err != nil {
 		// OS environment parsing error
 		panic(errors.New("cannot parse OS environment"))
+	}
+
+	if opt.ConfigFile != "" {
+		logger.Info("reading config file", zap.String("path", opt.ConfigFile))
+		configData, err := os.ReadFile(opt.ConfigFile)
+		if err != nil {
+			panic(errors.New("cannot read config file"))
+		}
+		err = json.Unmarshal(configData, &opt)
+		if err != nil {
+			panic(errors.New("cannot parse config file"))
+		}
+		logger.Info("config file parsed")
 	}
 
 	hp := strings.Split(opt.RunAddrOpt, ":")
@@ -150,6 +185,9 @@ func NewConfig() Config {
 	}
 	if !res.baseAddr.IsAbs() {
 		res.baseAddr.Scheme = "http"
+		if opt.EnableHTTPS {
+			res.baseAddr.Scheme = "https"
+		}
 		res.baseAddr.Host = "localhost"
 		if res.baseAddr.Path[0] != '/' {
 			res.baseAddr.Path = "/" + res.baseAddr.Path
@@ -170,6 +208,10 @@ func NewConfig() Config {
 		res.dbStorage = "/dev/null"
 	}
 
+	if opt.EnableHTTPS {
+		res.enableHTTPS = true
+	}
+
 	return res
 }
 
@@ -182,5 +224,6 @@ func init() {
 	flag.StringVar(&opt.BaseAddrOpt, "b", defaultBaseAddr, "shortener address")
 	flag.StringVar(&opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
 	flag.StringVar(&opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
-	// fmt.Println("config.init()")
+	flag.BoolVar(&opt.EnableHTTPS, "s", false, "enable HTTPS")
+	flag.StringVar(&opt.ConfigFile, "c", defaultConfigFile, "config file path")
 }

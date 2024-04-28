@@ -1,0 +1,7 @@
+{
+    "server_address": "localhost:8080",
+    "base_url": "http://localhost",
+    "file_storage_path": "/tmp/short-url-db.json",
+    "database_dsn": "host=localhost port=5432 user=postgres dbname=postgres password=postgres sslmode=disable",
+    "enable_https": true
+}

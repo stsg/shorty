@@ -19,14 +19,12 @@ build: info
 	@ echo "Compiling Binary"
 	@ echo
 	cd cmd/shortener && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildDate=$(DATE) -s -w" -o shortener
-	# go build -o cmd/shortener/shortener cmd/shortener/*.go
 
 build_macos: info
 	@ echo
 	@ echo "Compiling Binary for MacOS"
 	@ echo
 	cd cmd/shortener && GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.buildVersion=$(VERSION) -X main.buildCommit=$(COMMIT) -X main.buildDate=$(DATE) -s -w" -o shortener
-	# go build -o cmd/shortener/shortener cmd/shortener/*.go
 
 tidy:
 	@ echo
@@ -50,7 +48,7 @@ test: build
 	@ echo
 	@ echo "Testing"
 	@ echo
-	shortenertest -test.v -test.run=^TestIteration1\$$ -binary-path=cmd/shortener/shortener
+	shortytest -test.v -test.run=^TestIteration1\$$ -binary-path=cmd/shortener/shortener
 
 run:
 	@ echo

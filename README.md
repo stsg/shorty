@@ -10,3 +10,5 @@ CREATE TABLE urls (
     original_url    TEXT not null
 )
 ```
+
+NOTE: todo

@@ -30,3 +30,7 @@ vendor/
 #
 qodana.yaml
 .fleet/
+
+#
+data/cert/
+logs/

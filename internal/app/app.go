@@ -2,12 +2,22 @@
 package app
 
 import (
+	"bytes"
 	"compress/gzip"
+	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
+	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -20,10 +30,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"go.uber.org/zap"
-
 	mylogger "github.com/stsg/shorty/internal/logger"
 )
+
+const certSerialMaxInt = 1024
 
 // App class definition defines a struct named App with the following fields:
 //
@@ -51,18 +61,21 @@ type Session struct {
 //
 // It initializes the logger and router, sets up middleware, mounts routes, and starts the server.
 // It returns an error if there is any issue running the server.
-func (app *App) Run() error {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(errors.New("cannot create logger"))
-	}
-	defer logger.Sync()
+func (app *App) Run(ctx context.Context) error {
+	logger := mylogger.Get()
+	defer func() {
+		logger.Sync()
+		if x := recover(); x != nil {
+			logger.Sugar().Error(x)
+			panic(x)
+		}
+	}()
 
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
-	router.Use(mylogger.ZapLogger(logger))
+	router.Use(mylogger.ZapLogger())
 	router.Use(app.Decompress())
 	router.Use(middleware.Compress(5, "application/json", "text/html"))
 
@@ -78,12 +91,95 @@ func (app *App) Run() error {
 		childRouter.Delete("/user/urls", app.HandleDeleteURLs)
 	})
 
-	err = http.ListenAndServe(app.Config.GetRunAddr(), router)
-	if err != nil {
-		panic(fmt.Errorf("cannot run server: %v", err))
+	srv := &http.Server{
+		Addr:              app.Config.GetRunAddr(),
+		Handler:           router,
+		ReadHeaderTimeout: 30 * time.Second,
+		IdleTimeout:       time.Second,
 	}
 
-	return err
+	go func() {
+		<-ctx.Done()
+		if srv != nil {
+			if err := srv.Close(); err != nil {
+				logger.Error("shutting down by signal")
+			}
+		}
+	}()
+
+	if app.Config.GetEnableHTTPS() {
+		logger.Info("Creating certificate...")
+		err := app.createCertificate()
+		if err != nil {
+			panic(fmt.Sprintf("cannot create certificate: %v", err))
+		}
+		logger.Info("Certificate created.")
+		err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic(fmt.Sprintf("cannot run https server: %v", err))
+		}
+	} else {
+		err := srv.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic(fmt.Sprintf("cannot run http server: %v", err))
+		}
+	}
+
+	return nil
+}
+
+// createCertificate generates a certificate and private key, saving them to disk.
+//
+// No parameters.
+// Returns an error.
+func (app *App) createCertificate() error {
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(int64(certSerialMaxInt)),
+		Subject: pkix.Name{
+			Organization:       []string{"Localhost Ent."},
+			OrganizationalUnit: []string{"Shorty Server"},
+			CommonName:         "localhost",
+			Country:            []string{"RU"},
+		},
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1")},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return fmt.Errorf("error generate key %w", err)
+	}
+
+	certData, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		return fmt.Errorf("error create certificate %w", err)
+	}
+
+	var certDataBytes bytes.Buffer
+	err = pem.Encode(&certDataBytes, &pem.Block{Type: "CERTIFICATE", Bytes: certData})
+	if err != nil {
+		return fmt.Errorf("error encode certificate %w", err)
+	}
+	err = os.WriteFile("./data/cert/cert.pem", certDataBytes.Bytes(), 0644)
+	if err != nil {
+		return fmt.Errorf("error write certificate %w", err)
+	}
+
+	var privateKeyBytes bytes.Buffer
+	err = pem.Encode(&privateKeyBytes, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})
+	if err != nil {
+		return fmt.Errorf("error encode private key %w", err)
+	}
+	err = os.WriteFile("./data/cert/key.pem", privateKeyBytes.Bytes(), 0644)
+	if err != nil {
+		return fmt.Errorf("error write private key %w", err)
+	}
+
+	return nil
 }
 
 // NewSession creates a new session with the given storage.
