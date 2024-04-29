@@ -43,6 +43,15 @@ func (app *App) Decompress() func(http.Handler) http.Handler {
 	}
 }
 
+// TrustedSubnets returns a middleware function that checks if the requested URL is protected and if the client's IP address is trusted.
+//
+// The function takes an http.Handler as a parameter and returns an http.Handler.
+// The returned http.Handler checks if the requested URL is protected by iterating over the protectedURLs slice.
+// If the requested URL is not protected, the next http.Handler is called.
+// If the requested URL is protected, the client's IP address is obtained from the request's RemoteAddr field.
+// The client's IP address is then checked against the trusted subnet using the IsTrusted method of the Config struct.
+// If the client's IP address is not trusted, a "Forbidden" response is sent with a status code of http.StatusForbidden.
+// If the client's IP address is trusted, the next http.Handler is called.
 func (app *App) TrustedSubnets() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {

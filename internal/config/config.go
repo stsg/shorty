@@ -118,6 +118,13 @@ func (conf Config) GetTrustedSubnet() *net.IPNet {
 	return conf.trustedSubnet
 }
 
+// IsTrusted checks if the given IP address is trusted based on the trusted subnet in the Config struct.
+//
+// Parameters:
+// - ip: a string representing the IP address to check.
+//
+// Returns:
+// - a boolean indicating whether the IP address is trusted or not.
 func (conf Config) IsTrusted(ip string) bool {
 	if conf.trustedSubnet == nil {
 		return true
