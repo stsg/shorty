@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -34,6 +35,7 @@ type Options struct {
 	FileStorageOpt string `env:"FILE_STORAGE_PATH" json:"file_storage_path,omitempty"`
 	DBStorageOpt   string `env:"DATABASE_DSN" json:"database_dsn,omitempty"`
 	EnableHTTPS    bool   `env:"ENABLE_HTPPS" json:"enable_https,omitempty"`
+	TrustedSubnet  string `env:"TRUSTED_SUBNET" json:"trusted_subnet,omitempty"`
 	ConfigFile     string `env:"CONFIG"`
 }
 
@@ -47,13 +49,14 @@ type NetAddress struct {
 
 // Config is a struct that holds Application configuration
 type Config struct {
-	baseAddr    *url.URL
-	storageType string
-	fileStorage string
-	dbStorage   string
-	runAddr     NetAddress
-	enableHTTPS bool
-	configFile  string
+	baseAddr      *url.URL
+	storageType   string
+	fileStorage   string
+	dbStorage     string
+	runAddr       NetAddress
+	enableHTTPS   bool
+	trustedSubnet *net.IPNet
+	configFile    string
 }
 
 // GetRunAddr returns the run address of the Config object.
@@ -105,6 +108,22 @@ func (conf Config) GetDBStorage() string {
 // Returns a boolean value.
 func (conf Config) GetEnableHTTPS() bool {
 	return conf.enableHTTPS
+}
+
+// GetTrustedSubnet returns the value of the trustedSubnet field from the Config struct.
+//
+// No parameters.
+// Returns a boolean value.
+func (conf Config) GetTrustedSubnet() *net.IPNet {
+	return conf.trustedSubnet
+}
+
+func (conf Config) IsTrusted(ip string) bool {
+	if conf.trustedSubnet == nil {
+		return true
+	}
+	ipAddr := net.ParseIP(ip)
+	return conf.trustedSubnet.Contains(ipAddr)
 }
 
 // GetConfigFile returns the config file path from the Config struct.
@@ -212,6 +231,13 @@ func NewConfig() Config {
 		res.enableHTTPS = true
 	}
 
+	if opt.TrustedSubnet != "" {
+		_, res.trustedSubnet, err = net.ParseCIDR(opt.TrustedSubnet)
+		if err != nil {
+			panic(errors.New("cannot parse trusted subnet"))
+		}
+	}
+
 	return res
 }
 
@@ -225,5 +251,6 @@ func init() {
 	flag.StringVar(&opt.FileStorageOpt, "f", defaultFileStorage, "file storage path")
 	flag.StringVar(&opt.DBStorageOpt, "d", defaultDBStorage, "database DSN")
 	flag.BoolVar(&opt.EnableHTTPS, "s", false, "enable HTTPS")
+	flag.StringVar(&opt.TrustedSubnet, "t", "", "trusted subnet")
 	flag.StringVar(&opt.ConfigFile, "c", defaultConfigFile, "config file path")
 }

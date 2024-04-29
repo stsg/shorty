@@ -319,3 +319,16 @@ func (s *DBStorage) DeleteURL(delURL map[string]uint64) error {
 
 	return nil
 }
+
+func (s *DBStorage) GetStats() (ResJSONStats, error) {
+	var urls, users sql.NullInt64
+	query := "SELECT COUNT DISTINCT(short_url) AS urls, COUNT(DISTINCT user_id) AS users FROM urls"
+	err := s.db.QueryRow(query).Scan(&urls, &users)
+	if err != nil {
+		return ResJSONStats{}, err
+	}
+	return ResJSONStats{
+		URLCount:  int(urls.Int64),
+		UserCount: int(users.Int64),
+	}, nil
+}

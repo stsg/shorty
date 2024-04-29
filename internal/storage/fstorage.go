@@ -301,3 +301,19 @@ func (s *FileStorage) DeleteURL(delURL map[string]uint64) error {
 
 	return nil
 }
+
+// GetStats retrieves the statistics of URLs and users from the FileStorage.
+//
+// No parameters.
+// Returns ResJSONStats and an error.
+func (s *FileStorage) GetStats() (ResJSONStats, error) {
+	urls := len(s.fm)
+	users := make(map[uint64]uint64)
+	for _, lURL := range s.fm {
+		users[lURL.UserID]++
+	}
+	return ResJSONStats{
+		URLCount:  urls,
+		UserCount: len(users),
+	}, nil
+}
