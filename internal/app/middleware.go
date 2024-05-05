@@ -3,6 +3,7 @@ package app
 import (
 	"compress/gzip"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 
@@ -70,11 +71,10 @@ func (app *App) TrustedSubnets() func(http.Handler) http.Handler {
 				return
 			}
 
-			clientIP := strings.Split(req.RemoteAddr, ":")[0]
-			// clientIP := net.ParseIP(req.Header.Get("X-Real-Ip"))
-			logger.Debug("trusted ip", zap.String("ip", clientIP))
-			if app.Config.GetTrustedSubnet() != nil && app.Config.IsTrusted(clientIP) {
-				logger.Info("not trusted ip blocked", zap.String("ip", clientIP))
+			clientIP := net.ParseIP(req.Header.Get("X-Real-Ip"))
+			logger.Debug("trusted ip", zap.String("ip", clientIP.String()))
+			if app.Config.GetTrustedSubnet() != nil && app.Config.IsTrusted(clientIP.String()) {
+				logger.Info("not trusted ip blocked", zap.String("ip", clientIP.String()))
 				rw.Header().Set("Content-Type", "text/plain")
 				rw.WriteHeader(http.StatusForbidden)
 				rw.Write([]byte("Forbidden"))
