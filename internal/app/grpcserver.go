@@ -12,6 +12,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/stsg/shorty/api"
 	"github.com/stsg/shorty/internal/logger"
@@ -84,13 +85,13 @@ func (app *App) ShortRequest(ctx context.Context, req *pb.ShortRequestRequest) (
 // Returns an error if the long URL cannot be retrieved.
 func (app *App) ShortID(ctx context.Context, req *pb.ShortIDRequest) (*pb.ShortIDResponse, error) {
 	logger := logger.Get()
-	isUrlDeleted := false
+	isURLDeleted := false
 
 	id := strings.TrimPrefix(req.Url, "/")
 	id = strings.TrimSuffix(id, "/")
 	longURL, err := app.storage.GetRealURL(id)
 	if errors.Is(err, storage.ErrURLDeleted) {
-		isUrlDeleted = true
+		isURLDeleted = true
 	} else {
 		logger.Error("gRPC server ShortRequest: cannot get long URL", zap.Error(err))
 		return nil, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
@@ -98,7 +99,7 @@ func (app *App) ShortID(ctx context.Context, req *pb.ShortIDRequest) (*pb.ShortI
 
 	return &pb.ShortIDResponse{
 		Result:       longURL,
-		IsUrlDeleted: isUrlDeleted,
+		IsUrlDeleted: isURLDeleted,
 	}, nil
 }
 
@@ -141,5 +142,24 @@ func (app *App) ShortRequestBatch(ctx context.Context, req *pb.ShortRequestBatch
 
 	return &pb.ShortRequestBatchResponse{
 		Items: resItems,
+	}, nil
+}
+
+// GetStats retrieves the statistics of URLs and users from the App's storage.
+//
+// It takes a context and an empty protobuf message as input parameters.
+// It returns a GetStatsResponse protobuf message containing the number of URLs and users, and an error if any.
+func (app *App) GetStats(ctx context.Context, _ *emptypb.Empty) (*pb.GetStatsResponse, error) {
+	logger := logger.Get()
+
+	stats, err := app.storage.GetStats()
+	if err != nil {
+		logger.Error("gRPC server GetStats: cannot get stats", zap.Error(err))
+		return nil, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
+	}
+
+	return &pb.GetStatsResponse{
+		Urls:  uint32(stats.URLCount),
+		Users: uint32(stats.UserCount),
 	}, nil
 }
