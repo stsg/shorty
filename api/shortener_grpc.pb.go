@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -22,6 +23,7 @@ const (
 	Shortener_ShortRequest_FullMethodName      = "/shortener.Shortener/ShortRequest"
 	Shortener_ShortID_FullMethodName           = "/shortener.Shortener/ShortID"
 	Shortener_ShortRequestBatch_FullMethodName = "/shortener.Shortener/ShortRequestBatch"
+	Shortener_GetStats_FullMethodName          = "/shortener.Shortener/GetStats"
 )
 
 // ShortenerClient is the client API for Shortener service.
@@ -34,6 +36,8 @@ type ShortenerClient interface {
 	ShortID(ctx context.Context, in *ShortIDRequest, opts ...grpc.CallOption) (*ShortIDResponse, error)
 	// Creates a batch of URLs and returns their shortened versions
 	ShortRequestBatch(ctx context.Context, in *ShortRequestBatchRequest, opts ...grpc.CallOption) (*ShortRequestBatchResponse, error)
+	// Get statistics
+	GetStats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetStatsResponse, error)
 }
 
 type shortenerClient struct {
@@ -71,6 +75,15 @@ func (c *shortenerClient) ShortRequestBatch(ctx context.Context, in *ShortReques
 	return out, nil
 }
 
+func (c *shortenerClient) GetStats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GetStatsResponse, error) {
+	out := new(GetStatsResponse)
+	err := c.cc.Invoke(ctx, Shortener_GetStats_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ShortenerServer is the server API for Shortener service.
 // All implementations must embed UnimplementedShortenerServer
 // for forward compatibility
@@ -81,6 +94,8 @@ type ShortenerServer interface {
 	ShortID(context.Context, *ShortIDRequest) (*ShortIDResponse, error)
 	// Creates a batch of URLs and returns their shortened versions
 	ShortRequestBatch(context.Context, *ShortRequestBatchRequest) (*ShortRequestBatchResponse, error)
+	// Get statistics
+	GetStats(context.Context, *emptypb.Empty) (*GetStatsResponse, error)
 	mustEmbedUnimplementedShortenerServer()
 }
 
@@ -96,6 +111,9 @@ func (UnimplementedShortenerServer) ShortID(context.Context, *ShortIDRequest) (*
 }
 func (UnimplementedShortenerServer) ShortRequestBatch(context.Context, *ShortRequestBatchRequest) (*ShortRequestBatchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShortRequestBatch not implemented")
+}
+func (UnimplementedShortenerServer) GetStats(context.Context, *emptypb.Empty) (*GetStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStats not implemented")
 }
 func (UnimplementedShortenerServer) mustEmbedUnimplementedShortenerServer() {}
 
@@ -164,6 +182,24 @@ func _Shortener_ShortRequestBatch_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Shortener_GetStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShortenerServer).GetStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Shortener_GetStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShortenerServer).GetStats(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Shortener_ServiceDesc is the grpc.ServiceDesc for Shortener service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -182,6 +218,10 @@ var Shortener_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShortRequestBatch",
 			Handler:    _Shortener_ShortRequestBatch_Handler,
+		},
+		{
+			MethodName: "GetStats",
+			Handler:    _Shortener_GetStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

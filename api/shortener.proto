@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package shortener;
 
+import "google/protobuf/empty.proto";
+
 option go_package = "github.com/stsg/shorty/api";
 
 service Shortener {
@@ -13,6 +15,9 @@ service Shortener {
 
   // Creates a batch of URLs and returns their shortened versions
   rpc ShortRequestBatch(ShortRequestBatchRequest) returns (ShortRequestBatchResponse) {}
+
+  // Get statistics
+  rpc GetStats(google.protobuf.Empty) returns (GetStatsResponse) {}
 }
 
 message ShortRequestRequest {
@@ -44,4 +49,9 @@ message ShortRequestBatchResponse {
     string short_url = 2;
   }
   repeated ShortRequestBatchItem items = 1;
+}
+
+message GetStatsResponse {
+  uint32 urls = 1;
+  uint32 users = 2;
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	grpcmiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"go.uber.org/zap"
@@ -75,6 +76,36 @@ func (app *App) ShortRequest(ctx context.Context, req *pb.ShortRequestRequest) (
 	}, nil
 }
 
+// ShortID retrieves the long URL associated with the given short ID.
+//
+// ctx: The context for the function.
+// req: The ShortIDRequest containing the short ID.
+// Returns the ShortIDResponse containing the long URL and a flag indicating if the URL is deleted.
+// Returns an error if the long URL cannot be retrieved.
+func (app *App) ShortID(ctx context.Context, req *pb.ShortIDRequest) (*pb.ShortIDResponse, error) {
+	logger := logger.Get()
+	isUrlDeleted := false
+
+	id := strings.TrimPrefix(req.Url, "/")
+	id = strings.TrimSuffix(id, "/")
+	longURL, err := app.storage.GetRealURL(id)
+	if errors.Is(err, storage.ErrURLDeleted) {
+		isUrlDeleted = true
+	} else {
+		logger.Error("gRPC server ShortRequest: cannot get long URL", zap.Error(err))
+		return nil, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
+	}
+
+	return &pb.ShortIDResponse{
+		Result:       longURL,
+		IsUrlDeleted: isUrlDeleted,
+	}, nil
+}
+
+// ShortRequestBatch handles the request to save a batch of URLs and generates short URLs.
+//
+// Takes a context.Context and a pb.ShortRequestBatchRequest as input parameters.
+// Returns a pb.ShortRequestBatchResponse and an error.
 func (app *App) ShortRequestBatch(ctx context.Context, req *pb.ShortRequestBatchRequest) (*pb.ShortRequestBatchResponse, error) {
 	var rqJSON []storage.ReqJSONBatch
 
