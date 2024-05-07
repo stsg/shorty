@@ -5,21 +5,43 @@ package shortener;
 option go_package = "github.com/stsg/shorty/api";
 
 service Shortener {
-  // Save a new shortened URL
-  rpc ShortRequest(SaveURLRequest) returns (SaveURLResponse) {}
+  // Create a new shortened URL
+  rpc ShortRequest(ShortRequestRequest) returns (ShortRequestResponse) {}
 
   // Get the real URL for a shortened URL
-//   rpc GetRealURL(GetRealURLRequest) returns (GetRealURLResponse) {}
+  rpc ShortID(ShortIDRequest) returns (ShortIDResponse) {}
 
-  // Get the shortened URL for a real URL
-//   rpc GetShortURL(GetShortURLRequest) returns (GetShortURLResponse) {}
+  // Creates a batch of URLs and returns their shortened versions
+  rpc ShortRequestBatch(ShortRequestBatchRequest) returns (ShortRequestBatchResponse) {}
 }
 
-message SaveURLRequest {
+message ShortRequestRequest {
   string url = 1;
 }
-
-message SaveURLResponse {
+message ShortRequestResponse {
   string result = 1;
   bool is_unique_error = 2;
+}
+
+message ShortIDRequest {
+  string url = 1;
+}
+message ShortIDResponse {
+  string result = 1;
+  bool is_url_deleted = 2;
+}
+
+message ShortRequestBatchRequest {
+  message ShortRequestBatchItem {
+    string correlation_id = 1;
+    string original_url = 2;
+  }
+  repeated ShortRequestBatchItem items = 1;
+}
+message ShortRequestBatchResponse {
+  message ShortRequestBatchItem {
+    string correlation_id = 1;
+    string short_url = 2;
+  }
+  repeated ShortRequestBatchItem items = 1;
 }

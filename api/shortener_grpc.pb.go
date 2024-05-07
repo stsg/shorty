@@ -19,15 +19,21 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Shortener_ShortRequest_FullMethodName = "/shortener.Shortener/ShortRequest"
+	Shortener_ShortRequest_FullMethodName      = "/shortener.Shortener/ShortRequest"
+	Shortener_ShortID_FullMethodName           = "/shortener.Shortener/ShortID"
+	Shortener_ShortRequestBatch_FullMethodName = "/shortener.Shortener/ShortRequestBatch"
 )
 
 // ShortenerClient is the client API for Shortener service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ShortenerClient interface {
-	// Save a new shortened URL
-	ShortRequest(ctx context.Context, in *SaveURLRequest, opts ...grpc.CallOption) (*SaveURLResponse, error)
+	// Create a new shortened URL
+	ShortRequest(ctx context.Context, in *ShortRequestRequest, opts ...grpc.CallOption) (*ShortRequestResponse, error)
+	// Get the real URL for a shortened URL
+	ShortID(ctx context.Context, in *ShortIDRequest, opts ...grpc.CallOption) (*ShortIDResponse, error)
+	// Creates a batch of URLs and returns their shortened versions
+	ShortRequestBatch(ctx context.Context, in *ShortRequestBatchRequest, opts ...grpc.CallOption) (*ShortRequestBatchResponse, error)
 }
 
 type shortenerClient struct {
@@ -38,9 +44,27 @@ func NewShortenerClient(cc grpc.ClientConnInterface) ShortenerClient {
 	return &shortenerClient{cc}
 }
 
-func (c *shortenerClient) ShortRequest(ctx context.Context, in *SaveURLRequest, opts ...grpc.CallOption) (*SaveURLResponse, error) {
-	out := new(SaveURLResponse)
+func (c *shortenerClient) ShortRequest(ctx context.Context, in *ShortRequestRequest, opts ...grpc.CallOption) (*ShortRequestResponse, error) {
+	out := new(ShortRequestResponse)
 	err := c.cc.Invoke(ctx, Shortener_ShortRequest_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *shortenerClient) ShortID(ctx context.Context, in *ShortIDRequest, opts ...grpc.CallOption) (*ShortIDResponse, error) {
+	out := new(ShortIDResponse)
+	err := c.cc.Invoke(ctx, Shortener_ShortID_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *shortenerClient) ShortRequestBatch(ctx context.Context, in *ShortRequestBatchRequest, opts ...grpc.CallOption) (*ShortRequestBatchResponse, error) {
+	out := new(ShortRequestBatchResponse)
+	err := c.cc.Invoke(ctx, Shortener_ShortRequestBatch_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +75,12 @@ func (c *shortenerClient) ShortRequest(ctx context.Context, in *SaveURLRequest, 
 // All implementations must embed UnimplementedShortenerServer
 // for forward compatibility
 type ShortenerServer interface {
-	// Save a new shortened URL
-	ShortRequest(context.Context, *SaveURLRequest) (*SaveURLResponse, error)
+	// Create a new shortened URL
+	ShortRequest(context.Context, *ShortRequestRequest) (*ShortRequestResponse, error)
+	// Get the real URL for a shortened URL
+	ShortID(context.Context, *ShortIDRequest) (*ShortIDResponse, error)
+	// Creates a batch of URLs and returns their shortened versions
+	ShortRequestBatch(context.Context, *ShortRequestBatchRequest) (*ShortRequestBatchResponse, error)
 	mustEmbedUnimplementedShortenerServer()
 }
 
@@ -60,8 +88,14 @@ type ShortenerServer interface {
 type UnimplementedShortenerServer struct {
 }
 
-func (UnimplementedShortenerServer) ShortRequest(context.Context, *SaveURLRequest) (*SaveURLResponse, error) {
+func (UnimplementedShortenerServer) ShortRequest(context.Context, *ShortRequestRequest) (*ShortRequestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ShortRequest not implemented")
+}
+func (UnimplementedShortenerServer) ShortID(context.Context, *ShortIDRequest) (*ShortIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShortID not implemented")
+}
+func (UnimplementedShortenerServer) ShortRequestBatch(context.Context, *ShortRequestBatchRequest) (*ShortRequestBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ShortRequestBatch not implemented")
 }
 func (UnimplementedShortenerServer) mustEmbedUnimplementedShortenerServer() {}
 
@@ -77,7 +111,7 @@ func RegisterShortenerServer(s grpc.ServiceRegistrar, srv ShortenerServer) {
 }
 
 func _Shortener_ShortRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SaveURLRequest)
+	in := new(ShortRequestRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -89,7 +123,43 @@ func _Shortener_ShortRequest_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: Shortener_ShortRequest_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ShortenerServer).ShortRequest(ctx, req.(*SaveURLRequest))
+		return srv.(ShortenerServer).ShortRequest(ctx, req.(*ShortRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Shortener_ShortID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShortIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShortenerServer).ShortID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Shortener_ShortID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShortenerServer).ShortID(ctx, req.(*ShortIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Shortener_ShortRequestBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShortRequestBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ShortenerServer).ShortRequestBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Shortener_ShortRequestBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ShortenerServer).ShortRequestBatch(ctx, req.(*ShortRequestBatchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -104,6 +174,14 @@ var Shortener_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ShortRequest",
 			Handler:    _Shortener_ShortRequest_Handler,
+		},
+		{
+			MethodName: "ShortID",
+			Handler:    _Shortener_ShortID_Handler,
+		},
+		{
+			MethodName: "ShortRequestBatch",
+			Handler:    _Shortener_ShortRequestBatch_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

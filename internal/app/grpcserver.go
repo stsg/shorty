@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -52,7 +53,7 @@ func NewGRPCServer() *GRPCServer {
 //
 // Takes a context.Context and a pb.SaveURLRequest as input parameters.
 // Returns a pb.SaveURLResponse and an error.
-func (app *App) ShortRequest(ctx context.Context, req *pb.SaveURLRequest) (*pb.SaveURLResponse, error) {
+func (app *App) ShortRequest(ctx context.Context, req *pb.ShortRequestRequest) (*pb.ShortRequestResponse, error) {
 	logger := logger.Get()
 	isUniqueError := false
 
@@ -68,8 +69,46 @@ func (app *App) ShortRequest(ctx context.Context, req *pb.SaveURLRequest) (*pb.S
 		}
 	}
 
-	return &pb.SaveURLResponse{
+	return &pb.ShortRequestResponse{
 		Result:        result,
 		IsUniqueError: isUniqueError,
+	}, nil
+}
+
+func (app *App) ShortRequestBatch(ctx context.Context, req *pb.ShortRequestBatchRequest) (*pb.ShortRequestBatchResponse, error) {
+	var rqJSON []storage.ReqJSONBatch
+
+	logger := logger.Get()
+
+	_, userID := app.Session.AddUserSession()
+
+	body, err := json.Marshal(req.Items)
+	if err != nil {
+		logger.Error("gRPC server ShortRequestBatch: cannot marshal request body", zap.Error(err))
+		return nil, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
+	}
+
+	err = json.Unmarshal(body, &rqJSON)
+	if err != nil {
+		logger.Error("gRPC server ShortRequestBatch: cannot unmarshal request body", zap.Error(err))
+		return nil, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
+	}
+
+	rwJSON, err := app.storage.GetShortURLBatch(userID, app.Config.GetBaseAddr(), rqJSON)
+	if err != nil {
+		logger.Error("gRPC server ShortRequestBatch: cannot get short URL batch", zap.Error(err))
+		return nil, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
+	}
+
+	resItems := make([]*pb.ShortRequestBatchResponse_ShortRequestBatchItem, len(rwJSON))
+	for i, item := range rwJSON {
+		resItems[i] = &pb.ShortRequestBatchResponse_ShortRequestBatchItem{
+			CorrelationId: item.ID,
+			ShortUrl:      item.Result,
+		}
+	}
+
+	return &pb.ShortRequestBatchResponse{
+		Items: resItems,
 	}, nil
 }
