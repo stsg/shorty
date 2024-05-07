@@ -104,7 +104,9 @@ func (app *App) Run(ctx context.Context) error {
 		IdleTimeout:       time.Second,
 	}
 
-	logger.Info("Starting httpw ")
+	grp, ctx := errgroup.WithContext(ctx)
+
+	logger.Info("Starting http")
 	go func() {
 		<-ctx.Done()
 		if srv != nil {
@@ -112,9 +114,8 @@ func (app *App) Run(ctx context.Context) error {
 				logger.Error("shutting down http by signal")
 			}
 		}
+		app.GRPCServer.grpcServer.GracefulStop()
 	}()
-
-	grp, ctx := errgroup.WithContext(ctx)
 
 	grp.Go(func() error {
 		var err error
@@ -144,15 +145,8 @@ func (app *App) Run(ctx context.Context) error {
 	if err != nil {
 		panic(fmt.Sprintf("cannot run gRPC server: %v", err))
 	}
-	logger.Info("Starting gRPC ", zap.String("port", grpcListenPort))
-	go func() {
-		<-ctx.Done()
-		if listener != nil {
-			if err := listener.Close(); err != nil {
-				logger.Error("shutting down gRPC server by signal")
-			}
-		}
-	}()
+	logger.Info("Starting gRPC", zap.String("port", grpcListenPort))
+
 	grp.Go(func() error {
 		err = app.GRPCServer.grpcServer.Serve(listener)
 
