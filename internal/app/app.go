@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/stsg/shorty/internal/config"
 	"github.com/stsg/shorty/internal/storage"
@@ -30,6 +32,7 @@ import (
 )
 
 const certSerialMaxInt = 1024
+const grpcListenPort = ":63067"
 
 var protectedURLs = []string{
 	"/api/internal/stats",
@@ -44,10 +47,11 @@ var protectedURLs = []string{
 //
 // App holds main application
 type App struct {
-	storage storage.Storage
-	Session *Session
-	delChan chan map[string]uint64
-	Config  config.Config
+	storage    storage.Storage
+	Session    *Session
+	delChan    chan map[string]uint64
+	Config     config.Config
+	GRPCServer *GRPCServer
 }
 
 // Session is a struct that holds user session data.
@@ -100,31 +104,64 @@ func (app *App) Run(ctx context.Context) error {
 		IdleTimeout:       time.Second,
 	}
 
+	logger.Info("Starting httpw ")
 	go func() {
 		<-ctx.Done()
 		if srv != nil {
 			if err := srv.Close(); err != nil {
-				logger.Error("shutting down by signal")
+				logger.Error("shutting down http by signal")
 			}
 		}
 	}()
 
-	if app.Config.GetEnableHTTPS() {
-		logger.Info("Creating certificate...")
-		err := app.createCertificate()
-		if err != nil {
-			panic(fmt.Sprintf("cannot create certificate: %v", err))
+	grp, ctx := errgroup.WithContext(ctx)
+
+	grp.Go(func() error {
+		var err error
+
+		if app.Config.GetEnableHTTPS() {
+			logger.Info("Creating certificate...")
+			err := app.createCertificate()
+			if err != nil {
+				panic(fmt.Sprintf("cannot create certificate: %v", err))
+			}
+			logger.Info("Certificate created.")
+			err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				panic(fmt.Sprintf("cannot run https server: %v", err))
+			}
+		} else {
+			err := srv.ListenAndServe()
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				panic(fmt.Sprintf("cannot run http server: %v", err))
+			}
 		}
-		logger.Info("Certificate created.")
-		err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic(fmt.Sprintf("cannot run https server: %v", err))
+
+		return err
+	})
+
+	listener, err := net.Listen("tcp", grpcListenPort)
+	if err != nil {
+		panic(fmt.Sprintf("cannot run gRPC server: %v", err))
+	}
+	logger.Info("Starting gRPC ", zap.String("port", grpcListenPort))
+	go func() {
+		<-ctx.Done()
+		if listener != nil {
+			if err := listener.Close(); err != nil {
+				logger.Error("shutting down gRPC server by signal")
+			}
 		}
-	} else {
-		err := srv.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic(fmt.Sprintf("cannot run http server: %v", err))
-		}
+	}()
+	grp.Go(func() error {
+		err = app.GRPCServer.grpcServer.Serve(listener)
+
+		return err
+	})
+
+	if err := grp.Wait(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Error("error", zap.Error(err))
+		return err
 	}
 
 	return nil
@@ -247,10 +284,11 @@ func (app *App) SetSession(rw http.ResponseWriter, session string) {
 // It returns the handle object along with a new session object.
 func NewApp(config config.Config, storage storage.Storage) App {
 	app := App{
-		Config:  config,
-		storage: storage,
-		Session: NewSession(storage),
-		delChan: make(chan map[string]uint64, 500),
+		Config:     config,
+		storage:    storage,
+		Session:    NewSession(storage),
+		delChan:    make(chan map[string]uint64, 500),
+		GRPCServer: NewGRPCServer(),
 	}
 
 	go func() {

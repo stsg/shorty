@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package shortener;
+
+option go_package = "github.com/stsg/shorty/api";
+
+service Shortener {
+  // Save a new shortened URL
+  rpc ShortRequest(SaveURLRequest) returns (SaveURLResponse) {}
+
+  // Get the real URL for a shortened URL
+//   rpc GetRealURL(GetRealURLRequest) returns (GetRealURLResponse) {}
+
+  // Get the shortened URL for a real URL
+//   rpc GetShortURL(GetShortURLRequest) returns (GetShortURLResponse) {}
+}
+
+message SaveURLRequest {
+  string url = 1;
+}
+
+message SaveURLResponse {
+  string result = 1;
+  bool is_unique_error = 2;
+}

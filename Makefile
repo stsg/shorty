@@ -50,6 +50,12 @@ test: build
 	@ echo
 	shortytest -test.v -test.run=^TestIteration1\$$ -binary-path=cmd/shortener/shortener
 
+protoc:
+	@ echo
+	@ echo "Protobuf compilation"
+	@ echo
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative api/shortener.proto
+
 run:
 	@ echo
 	@ echo "Runnig"

@@ -57,6 +57,7 @@ func main() {
 	}()
 
 	shortyApp := app.NewApp(conf, pStorage)
+
 	err = shortyApp.Run(ctx)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		panic(fmt.Sprintf("application running error: %v", err))

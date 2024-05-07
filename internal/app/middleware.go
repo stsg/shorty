@@ -2,12 +2,16 @@ package app
 
 import (
 	"compress/gzip"
+	"context"
 	"io"
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 
 	"github.com/stsg/shorty/internal/logger"
 )
@@ -84,4 +88,25 @@ func (app *App) TrustedSubnets() func(http.Handler) http.Handler {
 			next.ServeHTTP(rw, req)
 		})
 	}
+}
+
+// GRPCRequestLogger logs the incoming gRPC request and its status code.
+//
+// It takes the context, request, server info, and the handler as input parameters.
+// It returns the response and error.
+func GRPCRequestLogger(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	logger := logger.Get()
+
+	logger.Info("grpc request", zap.String("method", info.FullMethod))
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	resp, err := handler(ctx, req)
+	status, _ := status.FromError(err)
+
+	logger.Info("got incoming gRPC request",
+		zap.String("method", info.FullMethod),
+		zap.String("status code", status.Code().String()),
+	)
+
+	return resp, err
 }
