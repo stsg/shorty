@@ -82,7 +82,7 @@ func (app *App) ShortRequest(ctx context.Context, req *pb.ShortRequestRequest) (
 // Returns an error if the long URL cannot be retrieved.
 func (app *App) ShortID(ctx context.Context, req *pb.ShortIDRequest) (*pb.ShortIDResponse, error) {
 	logger := logger.Get()
-	isURLDeleted := false
+	var isURLDeleted bool
 
 	id := strings.TrimPrefix(req.Url, "/")
 	id = strings.TrimSuffix(id, "/")
