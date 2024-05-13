@@ -36,15 +36,12 @@ func NewGRPCServer() *GRPCServer {
 		GRPCRequestLogger,
 	}
 
-	// var srv *grpc.Server
 	srv := grpc.NewServer(
 		grpc.UnaryInterceptor(grpcmiddleware.ChainUnaryServer(interceptors...)),
 	)
 	pb.RegisterShortenerServer(srv, &GRPCServer{
 		grpcServer: srv,
 	})
-
-	// return srv
 
 	return &GRPCServer{
 		grpcServer: srv,
