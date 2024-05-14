@@ -42,13 +42,13 @@ func (app *App) HandleShortID(rw http.ResponseWriter, req *http.Request) {
 	if errors.Is(err, storage.ErrURLDeleted) {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusGone)
-		rw.Write([]byte(err.Error()))
+		http.Error(rw, err.Error(), http.StatusGone)
 		return
 	}
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusNotFound)
-		rw.Write([]byte(err.Error()))
+		http.Error(rw, err.Error(), http.StatusGone)
 		return
 
 	}
@@ -81,11 +81,11 @@ func (app *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	userIDToken, err := req.Cookie("token")
-	if err == nil {
-		userID = app.Session.GetUserSessionID(userIDToken.Value)
-	} else {
+	if err != nil {
 		session, userID = app.Session.AddUserSession()
 		app.SetSession(rw, session)
+	} else {
+		userID = app.Session.GetUserSessionID(userIDToken.Value)
 	}
 
 	shortURL, err := app.storage.GetShortURL(userID, longURL)
@@ -97,7 +97,7 @@ func (app *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 			return
 		}
 		rw.WriteHeader(http.StatusBadRequest)
-		rw.Write([]byte(err.Error()))
+		http.Error(rw, err.Error(), http.StatusGone)
 		return
 	}
 	rw.Header().Set("Content-Type", "text/plain")
@@ -225,7 +225,7 @@ func (app *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	} else {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusUnauthorized)
-		rw.Write([]byte(err.Error()))
+		http.Error(rw, err.Error(), http.StatusGone)
 		return
 	}
 
@@ -233,7 +233,7 @@ func (app *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte(err.Error()))
+		http.Error(rw, err.Error(), http.StatusGone)
 		return
 	}
 	if len(resJSON) == 0 {
@@ -244,7 +244,6 @@ func (app *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
 	}
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)
-	// body, _ := json.Marshal(resJSON)
 	body, _ := json.MarshalIndent(resJSON, "", "    ")
 	rw.Write([]byte(body))
 }
@@ -262,14 +261,14 @@ func (app *App) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte(err.Error()))
+		http.Error(rw, err.Error(), http.StatusGone)
 		return
 	}
 	err = json.Unmarshal(urls, &delURLs)
 	if err != nil {
 		rw.Header().Set("Content-Type", "application/text")
 		rw.WriteHeader(http.StatusBadRequest)
-		rw.Write([]byte(err.Error()))
+		http.Error(rw, err.Error(), http.StatusGone)
 		return
 	}
 
@@ -277,7 +276,7 @@ func (app *App) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusUnauthorized)
-		rw.Write([]byte(err.Error()))
+		http.Error(rw, err.Error(), http.StatusGone)
 		return
 
 	}
