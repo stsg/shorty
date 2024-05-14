@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-package shortener;
+package api.v1;
 
 import "google/protobuf/empty.proto";
 
 option go_package = "github.com/stsg/shorty/api";
 
-service Shortener {
+service ShortenerService {
   // Create a new shortened URL
   rpc ShortRequest(ShortRequestRequest) returns (ShortRequestResponse) {}
 
@@ -25,7 +25,8 @@ message ShortRequestRequest {
 }
 message ShortRequestResponse {
   string result = 1;
-  bool is_unique_error = 2;
+  string error = 2;
+  // bool is_unique_error = 2;
 }
 
 message ShortIDRequest {
@@ -33,7 +34,8 @@ message ShortIDRequest {
 }
 message ShortIDResponse {
   string result = 1;
-  bool is_url_deleted = 2;
+  string error = 2;
+  // bool is_url_deleted = 2;
 }
 
 message ShortRequestBatchRequest {

@@ -54,7 +54,8 @@ protoc:
 	@ echo
 	@ echo "Protobuf compilation"
 	@ echo
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative api/shortener.proto
+	buf format -w 
+	buf lint && buf generate 
 
 run:
 	@ echo

@@ -20,7 +20,7 @@ func (app *App) HandlePing(rw http.ResponseWriter, req *http.Request) {
 	if !app.storage.IsReady() {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte("storage not ready"))
+		http.Error(rw, "storage not ready", http.StatusInternalServerError)
 		return
 	}
 	rw.Header().Set("Content-Type", "text/plain")
@@ -66,7 +66,10 @@ func (app *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
 
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
-		panic(errors.New("cannot read request body"))
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusInternalServerError)
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	longURL := string(url)
@@ -115,7 +118,10 @@ func (app *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request
 
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
-		panic(errors.New("cannot read request body"))
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusInternalServerError)
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	err = json.Unmarshal(url, &rqJSON)
 	if err != nil {
@@ -169,7 +175,10 @@ func (app *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Re
 
 	url, err := io.ReadAll(req.Body)
 	if err != nil {
-		panic(errors.New("cannot read request body"))
+		rw.Header().Set("Content-Type", "text/plain")
+		rw.WriteHeader(http.StatusInternalServerError)
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	err = json.Unmarshal(url, &rqJSON)
 	if err != nil {

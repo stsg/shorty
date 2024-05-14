@@ -14,14 +14,14 @@ import (
 	status "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/stsg/shorty/api"
+	pb "github.com/stsg/shorty/api/v1"
 	"github.com/stsg/shorty/internal/logger"
 	"github.com/stsg/shorty/internal/storage"
 )
 
 // GRPCServer is a struct that holds gRPC server data.
 type GRPCServer struct {
-	pb.UnimplementedShortenerServer
+	pb.UnimplementedShortenerServiceServer
 	grpcServer *grpc.Server
 }
 
@@ -39,7 +39,7 @@ func NewGRPCServer() *GRPCServer {
 	srv := grpc.NewServer(
 		grpc.UnaryInterceptor(grpcmiddleware.ChainUnaryServer(interceptors...)),
 	)
-	pb.RegisterShortenerServer(srv, &GRPCServer{
+	pb.RegisterShortenerServiceServer(srv, &GRPCServer{
 		grpcServer: srv,
 	})
 
@@ -54,23 +54,28 @@ func NewGRPCServer() *GRPCServer {
 // Returns a pb.SaveURLResponse and an error.
 func (app *App) ShortRequest(ctx context.Context, req *pb.ShortRequestRequest) (*pb.ShortRequestResponse, error) {
 	logger := logger.Get()
-	isUniqueError := false
 
 	_, userID := app.Session.AddUserSession()
 	shortURL, err := app.storage.GetShortURL(userID, req.Url)
 	result := app.Config.GetBaseAddr() + "/" + shortURL
 	if err != nil {
 		if errors.Is(err, storage.ErrUniqueViolation) {
-			isUniqueError = true
+			return &pb.ShortRequestResponse{
+				Result: result,
+				Error:  status.Error(codes.AlreadyExists, err.Error()).Error(),
+			}, nil
 		} else {
 			logger.Error("gRPC server ShortRequest: cannot get short URL", zap.Error(err))
-			return nil, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
+			return &pb.ShortRequestResponse{
+				Result: result,
+				Error:  status.Error(codes.InvalidArgument, err.Error()).Error(),
+			}, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
 		}
 	}
 
 	return &pb.ShortRequestResponse{
-		Result:        result,
-		IsUniqueError: isUniqueError,
+		Result: result,
+		Error:  status.Error(codes.OK, "").Error(),
 	}, nil
 }
 
@@ -82,21 +87,28 @@ func (app *App) ShortRequest(ctx context.Context, req *pb.ShortRequestRequest) (
 // Returns an error if the long URL cannot be retrieved.
 func (app *App) ShortID(ctx context.Context, req *pb.ShortIDRequest) (*pb.ShortIDResponse, error) {
 	logger := logger.Get()
-	var isURLDeleted bool
 
 	id := strings.TrimPrefix(req.Url, "/")
 	id = strings.TrimSuffix(id, "/")
 	longURL, err := app.storage.GetRealURL(id)
-	if errors.Is(err, storage.ErrURLDeleted) {
-		isURLDeleted = true
-	} else {
-		logger.Error("gRPC server ShortRequest: cannot get long URL", zap.Error(err))
-		return nil, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
+	if err != nil {
+		if errors.Is(err, storage.ErrURLDeleted) {
+			return &pb.ShortIDResponse{
+				Result: longURL,
+				Error:  status.Error(codes.NotFound, err.Error()).Error(),
+			}, nil
+		} else {
+			logger.Error("gRPC server ShortRequest: cannot get long URL", zap.Error(err))
+			return &pb.ShortIDResponse{
+				Result: longURL,
+				Error:  status.Error(codes.InvalidArgument, err.Error()).Error(),
+			}, fmt.Errorf("%w", status.Error(codes.InvalidArgument, err.Error()))
+		}
 	}
 
 	return &pb.ShortIDResponse{
-		Result:       longURL,
-		IsUrlDeleted: isURLDeleted,
+		Result: longURL,
+		Error:  status.Error(codes.OK, "").Error(),
 	}, nil
 }
 
