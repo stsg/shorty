@@ -25,8 +25,9 @@ message ShortRequestRequest {
 }
 message ShortRequestResponse {
   string result = 1;
+  // TODO should be removed due to protocol restriction
+  // TODO should be returned in result
   string error = 2;
-  // bool is_unique_error = 2;
 }
 
 message ShortIDRequest {
@@ -34,8 +35,9 @@ message ShortIDRequest {
 }
 message ShortIDResponse {
   string result = 1;
+  // TODO should be removed due to protocol restriction
+  // TODO should be returned in result
   string error = 2;
-  // bool is_url_deleted = 2;
 }
 
 message ShortRequestBatchRequest {
