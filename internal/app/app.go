@@ -3,26 +3,24 @@ package app
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/stsg/shorty/internal/config"
 	"github.com/stsg/shorty/internal/storage"
@@ -34,6 +32,11 @@ import (
 )
 
 const certSerialMaxInt = 1024
+const grpcListenPort = ":63067"
+
+var protectedURLs = []string{
+	"/api/internal/stats",
+}
 
 // App class definition defines a struct named App with the following fields:
 //
@@ -44,10 +47,11 @@ const certSerialMaxInt = 1024
 //
 // App holds main application
 type App struct {
-	storage storage.Storage
-	Session *Session
-	delChan chan map[string]uint64
-	Config  config.Config
+	storage    storage.Storage
+	Session    *Session
+	delChan    chan map[string]uint64
+	Config     config.Config
+	GRPCServer *GRPCServer
 }
 
 // Session is a struct that holds user session data.
@@ -78,6 +82,7 @@ func (app *App) Run(ctx context.Context) error {
 	router.Use(mylogger.ZapLogger())
 	router.Use(app.Decompress())
 	router.Use(middleware.Compress(5, "application/json", "text/html"))
+	router.Use(app.TrustedSubnets())
 
 	router.Mount("/debug", middleware.Profiler())
 
@@ -89,6 +94,7 @@ func (app *App) Run(ctx context.Context) error {
 		childRouter.Post("/shorten/batch", app.HandleShortRequestJSONBatch)
 		childRouter.Get("/user/urls", app.HandleGetAllURLs)
 		childRouter.Delete("/user/urls", app.HandleDeleteURLs)
+		childRouter.Get("/internal/stats", app.HandleInternalStats)
 	})
 
 	srv := &http.Server{
@@ -98,31 +104,58 @@ func (app *App) Run(ctx context.Context) error {
 		IdleTimeout:       time.Second,
 	}
 
+	grp, ctx := errgroup.WithContext(ctx)
+
+	logger.Info("Starting http")
 	go func() {
 		<-ctx.Done()
 		if srv != nil {
 			if err := srv.Close(); err != nil {
-				logger.Error("shutting down by signal")
+				logger.Error("shutting down http by signal")
 			}
 		}
+		app.GRPCServer.grpcServer.GracefulStop()
 	}()
 
-	if app.Config.GetEnableHTTPS() {
-		logger.Info("Creating certificate...")
-		err := app.createCertificate()
-		if err != nil {
-			panic(fmt.Sprintf("cannot create certificate: %v", err))
+	grp.Go(func() error {
+		var err error
+
+		if app.Config.GetEnableHTTPS() {
+			logger.Info("Creating certificate...")
+			err := app.createCertificate()
+			if err != nil {
+				panic(fmt.Sprintf("cannot create certificate: %v", err))
+			}
+			logger.Info("Certificate created.")
+			err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				panic(fmt.Sprintf("cannot run https server: %v", err))
+			}
+		} else {
+			err := srv.ListenAndServe()
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				panic(fmt.Sprintf("cannot run http server: %v", err))
+			}
 		}
-		logger.Info("Certificate created.")
-		err = srv.ListenAndServeTLS("./data/cert/cert.pem", "./data/cert/key.pem")
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic(fmt.Sprintf("cannot run https server: %v", err))
-		}
-	} else {
-		err := srv.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic(fmt.Sprintf("cannot run http server: %v", err))
-		}
+
+		return err
+	})
+
+	listener, err := net.Listen("tcp", grpcListenPort)
+	if err != nil {
+		panic(fmt.Sprintf("cannot run gRPC server: %v", err))
+	}
+	logger.Info("Starting gRPC", zap.String("port", grpcListenPort))
+
+	grp.Go(func() error {
+		err = app.GRPCServer.grpcServer.Serve(listener)
+
+		return err
+	})
+
+	if err := grp.Wait(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Error("error", zap.Error(err))
+		return err
 	}
 
 	return nil
@@ -245,10 +278,11 @@ func (app *App) SetSession(rw http.ResponseWriter, session string) {
 // It returns the handle object along with a new session object.
 func NewApp(config config.Config, storage storage.Storage) App {
 	app := App{
-		Config:  config,
-		storage: storage,
-		Session: NewSession(storage),
-		delChan: make(chan map[string]uint64, 500),
+		Config:     config,
+		storage:    storage,
+		Session:    NewSession(storage),
+		delChan:    make(chan map[string]uint64, 500),
+		GRPCServer: NewGRPCServer(),
 	}
 
 	go func() {
@@ -261,314 +295,4 @@ func NewApp(config config.Config, storage storage.Storage) App {
 	}()
 
 	return app
-}
-
-// HandlePing handles the ping request.
-//
-// It takes in the http.ResponseWriter and *http.Request as parameters.
-// It does not return any values.
-func (app *App) HandlePing(rw http.ResponseWriter, req *http.Request) {
-	ping := strings.TrimPrefix(req.URL.Path, "/")
-	ping = strings.TrimSuffix(ping, "/")
-	if !app.storage.IsReady() {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte("storage not ready"))
-		return
-	}
-	rw.Header().Set("Content-Type", "text/plain")
-	rw.WriteHeader(http.StatusOK)
-	rw.Write([]byte(ping + " - pong"))
-}
-
-// HandleShortID handles the shortened URL request and redirects the client to the corresponding long URL.
-//
-// Parameters:
-// - rw: http.ResponseWriter - the response writer used to write the response.
-// - req: *http.Request - the HTTP request object containing the URL path.
-//
-// Returns: None.
-func (app *App) HandleShortID(rw http.ResponseWriter, req *http.Request) {
-	id := strings.TrimPrefix(req.URL.Path, "/")
-	id = strings.TrimSuffix(id, "/")
-	longURL, err := app.storage.GetRealURL(id)
-	if errors.Is(err, storage.ErrURLDeleted) {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusGone)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-	if err != nil {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusNotFound)
-		rw.Write([]byte(err.Error()))
-		return
-
-	}
-	rw.Header().Set("Location", longURL)
-	rw.WriteHeader(http.StatusTemporaryRedirect)
-	rw.Write([]byte(longURL))
-}
-
-// HandleShortRequest handles the short URL request and generates a short URL for the given long URL.
-//
-// The parameters are rw for http.ResponseWriter and req for http.Request. It does not return anything.
-func (app *App) HandleShortRequest(rw http.ResponseWriter, req *http.Request) {
-	var userID uint64
-	var session string
-
-	url, err := io.ReadAll(req.Body)
-	if err != nil {
-		panic(errors.New("cannot read request body"))
-	}
-
-	longURL := string(url)
-	if longURL == "" {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusBadRequest)
-		rw.Write([]byte("url is empty"))
-		return
-	}
-
-	userIDToken, err := req.Cookie("token")
-	if err == nil {
-		userID = app.Session.GetUserSessionID(userIDToken.Value)
-	} else {
-		session, userID = app.Session.AddUserSession()
-		app.SetSession(rw, session)
-	}
-
-	shortURL, err := app.storage.GetShortURL(userID, longURL)
-	if err != nil {
-		rw.Header().Set("Content-Type", "text/plain")
-		if errors.Is(err, storage.ErrUniqueViolation) {
-			rw.WriteHeader(http.StatusConflict)
-			rw.Write([]byte(app.Config.GetBaseAddr() + "/" + shortURL))
-			return
-		}
-		rw.WriteHeader(http.StatusBadRequest)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-	rw.Header().Set("Content-Type", "text/plain")
-	rw.WriteHeader(http.StatusCreated)
-	rw.Write([]byte(app.Config.GetBaseAddr() + "/" + shortURL))
-}
-
-// HandleShortRequestJSON handles short request JSON and generates a short URL.
-//
-// Parameters:
-// - rw: http.ResponseWriter for writing response.
-// - req: *http.Request for incoming request.
-func (app *App) HandleShortRequestJSON(rw http.ResponseWriter, req *http.Request) {
-	var rqJSON storage.ReqJSON
-	var rwJSON storage.ResJSON
-	var userID uint64
-	var session string
-
-	url, err := io.ReadAll(req.Body)
-	if err != nil {
-		panic(errors.New("cannot read request body"))
-	}
-	err = json.Unmarshal(url, &rqJSON)
-	if err != nil {
-		rw.Header().Set("Content-Type", "application/json")
-		rw.WriteHeader(http.StatusBadRequest)
-		body, _ := json.Marshal(map[string]string{"error": err.Error()})
-		rw.Write([]byte(body))
-		return
-	}
-
-	userIDToken, err := req.Cookie("token")
-	if err == nil {
-		userID = app.Session.GetUserSessionID(userIDToken.Value)
-	} else {
-		session, userID = app.Session.AddUserSession()
-		app.SetSession(rw, session)
-	}
-
-	rwJSON.Result, err = app.storage.GetShortURL(userID, rqJSON.URL)
-	rwJSON.Result = app.Config.GetBaseAddr() + "/" + rwJSON.Result
-	if err != nil {
-		rw.Header().Set("Content-Type", "application/json")
-		if errors.Is(err, storage.ErrUniqueViolation) {
-			rw.WriteHeader(http.StatusConflict)
-			body, _ := json.Marshal(rwJSON)
-			rw.Write([]byte(body))
-			return
-		}
-		rw.WriteHeader(http.StatusBadRequest)
-		body, _ := json.Marshal(map[string]string{"error": err.Error()})
-		rw.Write([]byte(body))
-		return
-	}
-	rw.Header().Set("Location", rwJSON.Result)
-	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusCreated)
-	body, _ := json.Marshal(rwJSON)
-	rw.Write([]byte(body))
-}
-
-// HandleShortRequestJSONBatch handles a JSON batch request and processes it accordingly.
-//
-// Parameters:
-//
-//	rw http.ResponseWriter - the http response writer for sending responses.
-//	req *http.Request - the http request containing the JSON batch.
-func (app *App) HandleShortRequestJSONBatch(rw http.ResponseWriter, req *http.Request) {
-	var rqJSON []storage.ReqJSONBatch
-	var userID uint64
-	var session string
-
-	url, err := io.ReadAll(req.Body)
-	if err != nil {
-		panic(errors.New("cannot read request body"))
-	}
-	err = json.Unmarshal(url, &rqJSON)
-	if err != nil {
-		rw.Header().Set("Content-Type", "application/json")
-		rw.WriteHeader(http.StatusBadRequest)
-		body, _ := json.Marshal(map[string]string{"error": err.Error()})
-		rw.Write([]byte(body))
-		return
-	}
-
-	userIDToken, err := req.Cookie("token")
-	if err == nil {
-		userID = app.Session.GetUserSessionID(userIDToken.Value)
-	} else {
-		session, userID = app.Session.AddUserSession()
-		app.SetSession(rw, session)
-	}
-
-	rwJSON, err := app.storage.GetShortURLBatch(userID, app.Config.GetBaseAddr(), rqJSON)
-	if err != nil {
-		rw.Header().Set("Content-Type", "application/json")
-		rw.WriteHeader(http.StatusBadRequest)
-		body, _ := json.Marshal(map[string]string{"error": err.Error()})
-		rw.Write([]byte(body))
-		return
-	}
-	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusCreated)
-	body, _ := json.Marshal(rwJSON)
-	rw.Write([]byte(body))
-}
-
-// Decompress returns a middleware that decompresses request bodies if they are gzipped.
-//
-// It takes an http.Handler as a parameter and returns an http.Handler.
-func (app *App) Decompress() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if req.Header.Get("Content-Encoding") == "gzip" {
-				reader, err := gzip.NewReader(req.Body)
-				if err != nil {
-					rw.Header().Set("Content-Type", "text/plain")
-					rw.WriteHeader(http.StatusBadRequest)
-					rw.Write([]byte(err.Error()))
-					return
-				}
-				defer reader.Close()
-
-				buf := new(strings.Builder)
-				_, err = io.Copy(buf, reader)
-				if err != nil {
-					rw.Header().Set("Content-Type", "text/plain")
-					rw.WriteHeader(http.StatusBadRequest)
-					rw.Write([]byte(err.Error()))
-					return
-				}
-				req.Body = io.NopCloser(strings.NewReader(buf.String()))
-				req.Header.Set("Content-Length", string(rune(len(buf.String()))))
-			}
-			next.ServeHTTP(rw, req)
-		})
-	}
-}
-
-// HandleGetAllURLs handles the GET request to retrieve all URLs for a user.
-//
-// It takes in the http.ResponseWriter and http.Request as parameters.
-// It does not return any value.
-func (app *App) HandleGetAllURLs(rw http.ResponseWriter, req *http.Request) {
-	var resJSON []storage.ResJSONURL
-	var userID uint64
-
-	userIDToken, err := req.Cookie("token")
-	if err == nil {
-		userID = app.Session.GetUserSessionID(userIDToken.Value)
-	} else {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusUnauthorized)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-
-	resJSON, err = app.storage.GetAllURLs(userID, app.Config.GetBaseAddr())
-	if err != nil {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-	if len(resJSON) == 0 {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusNoContent)
-		rw.Write([]byte("no content for this user"))
-		return
-	}
-	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusOK)
-	// body, _ := json.Marshal(resJSON)
-	body, _ := json.MarshalIndent(resJSON, "", "    ")
-	rw.Write([]byte(body))
-}
-
-// HandleDeleteURLs handles the deletion of URLs.
-//
-// It takes in an http.ResponseWriter and an http.Request as parameters.
-// The function reads the request body to get the URLs to be deleted.
-// If there is an error reading the request body, it sets the response header to "text/plain" and writes the error message with a status code of http.StatusInternal
-func (app *App) HandleDeleteURLs(rw http.ResponseWriter, req *http.Request) {
-	var delURLs []string
-	var userID uint64
-
-	urls, err := io.ReadAll(req.Body)
-	if err != nil {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-	err = json.Unmarshal(urls, &delURLs)
-	if err != nil {
-		rw.Header().Set("Content-Type", "application/text")
-		rw.WriteHeader(http.StatusBadRequest)
-		rw.Write([]byte(err.Error()))
-		return
-	}
-
-	userIDToken, err := req.Cookie("token")
-	if err != nil {
-		rw.Header().Set("Content-Type", "text/plain")
-		rw.WriteHeader(http.StatusUnauthorized)
-		rw.Write([]byte(err.Error()))
-		return
-
-	}
-	userID = app.Session.GetUserSessionID(userIDToken.Value)
-
-	for _, url := range delURLs {
-		go func(url string, userID uint64) {
-			app.delChan <- map[string]uint64{
-				url: userID,
-			}
-		}(url, userID)
-
-	}
-
-	rw.Header().Set("Content-Type", "text/plain")
-	rw.WriteHeader(http.StatusAccepted)
-	rw.Write([]byte("Accepted"))
 }

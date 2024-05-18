@@ -208,3 +208,19 @@ func (s *MapStorage) DeleteURL(delURL map[string]uint64) error {
 
 	return nil
 }
+
+// GetStats calculates the URL and user statistics for the MapStorage.
+//
+// No parameters.
+// Returns ResJSONStats struct containing URLCount and UserCount, and an error.
+func (s *MapStorage) GetStats() (ResJSONStats, error) {
+	urls := len(s.m)
+	users := make(map[uint64]uint64)
+	for _, lURL := range s.m {
+		users[lURL.UserID]++
+	}
+	return ResJSONStats{
+		URLCount:  urls,
+		UserCount: len(users),
+	}, nil
+}

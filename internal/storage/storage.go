@@ -35,6 +35,12 @@ type ResJSONURL struct {
 	URL    string `json:"original_url,omitempty"`
 }
 
+// ResJSONStats result JSON for serializing/deserializng stats
+type ResJSONStats struct {
+	URLCount  int `json:"urls,omitempty"`
+	UserCount int `json:"users,omitempty"`
+}
+
 // ShortURLLength is the length of the short URL.
 var ShortURLLength = 6
 
@@ -64,6 +70,7 @@ type Storage interface {
 	GetLastID() (int, error)
 	DeleteURLs(userID uint64, delURLs []string) error
 	DeleteURL(delURL map[string]uint64) error
+	GetStats() (ResJSONStats, error)
 }
 
 // GenShortURL generates a random short URL of length ShortURLLength using the characters from the charset.

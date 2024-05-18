@@ -50,6 +50,13 @@ test: build
 	@ echo
 	shortytest -test.v -test.run=^TestIteration1\$$ -binary-path=cmd/shortener/shortener
 
+protoc:
+	@ echo
+	@ echo "Protobuf compilation"
+	@ echo
+	buf format -w 
+	buf lint && buf generate 
+
 run:
 	@ echo
 	@ echo "Runnig"

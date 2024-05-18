@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package api.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/stsg/shorty/api";
+
+service ShortenerService {
+  // Create a new shortened URL
+  rpc ShortRequest(ShortRequestRequest) returns (ShortRequestResponse) {}
+
+  // Get the real URL for a shortened URL
+  rpc ShortID(ShortIDRequest) returns (ShortIDResponse) {}
+
+  // Creates a batch of URLs and returns their shortened versions
+  rpc ShortRequestBatch(ShortRequestBatchRequest) returns (ShortRequestBatchResponse) {}
+
+  // Get statistics
+  rpc GetStats(google.protobuf.Empty) returns (GetStatsResponse) {}
+}
+
+message ShortRequestRequest {
+  string url = 1;
+}
+message ShortRequestResponse {
+  string result = 1;
+  // TODO should be removed due to protocol restriction
+  // TODO should be returned in result
+  string error = 2;
+}
+
+message ShortIDRequest {
+  string url = 1;
+}
+message ShortIDResponse {
+  string result = 1;
+  // TODO should be removed due to protocol restriction
+  // TODO should be returned in result
+  string error = 2;
+}
+
+message ShortRequestBatchRequest {
+  message ShortRequestBatchItem {
+    string correlation_id = 1;
+    string original_url = 2;
+  }
+  repeated ShortRequestBatchItem items = 1;
+}
+message ShortRequestBatchResponse {
+  message ShortRequestBatchItem {
+    string correlation_id = 1;
+    string short_url = 2;
+  }
+  repeated ShortRequestBatchItem items = 1;
+}
+
+message GetStatsResponse {
+  uint32 urls = 1;
+  uint32 users = 2;
+}

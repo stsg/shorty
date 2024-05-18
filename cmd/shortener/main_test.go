@@ -11,7 +11,6 @@ import (
 	"github.com/stsg/shorty/internal/config"
 	"github.com/stsg/shorty/internal/storage"
 
-	// "github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/assert"
 )
 

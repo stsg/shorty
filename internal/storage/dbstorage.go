@@ -319,3 +319,25 @@ func (s *DBStorage) DeleteURL(delURL map[string]uint64) error {
 
 	return nil
 }
+
+// GetStats retrieves statistics about the URLs stored in the database.
+//
+// It executes a SQL query to count the distinct short URLs and distinct user IDs in the "urls" table.
+// The function returns a ResJSONStats struct containing the counts of URLs and users, respectively.
+// If an error occurs during the execution of the query, it returns an empty ResJSONStats struct and the error.
+//
+// Returns:
+// - ResJSONStats: A struct containing the counts of URLs and users.
+// - error: An error if the query execution fails.
+func (s *DBStorage) GetStats() (ResJSONStats, error) {
+	var urls, users sql.NullInt64
+	query := "SELECT COUNT DISTINCT(short_url) AS urls, COUNT(DISTINCT user_id) AS users FROM urls"
+	err := s.db.QueryRow(query).Scan(&urls, &users)
+	if err != nil {
+		return ResJSONStats{}, err
+	}
+	return ResJSONStats{
+		URLCount:  int(urls.Int64),
+		UserCount: int(users.Int64),
+	}, nil
+}
